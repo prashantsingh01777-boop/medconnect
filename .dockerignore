@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+backups/
+__pycache__/
+*.py[cod]
+.vscode/

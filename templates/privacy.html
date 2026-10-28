@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MedConnect Privacy Policy</title>
+    <style>
+        body { max-width: 860px; margin: 0 auto; padding: 28px 20px; font: 16px/1.7 system-ui, sans-serif; color: #172033; }
+        h1, h2 { line-height: 1.25; }
+        section { margin: 36px 0; }
+        a { color: #075985; }
+        .notice { padding: 14px; background: #fff7ed; border-left: 4px solid #c2410c; }
+    </style>
+</head>
+<body>
+    <p><a href="/">← MedConnect</a> · <a href="/terms">Terms of Use</a></p>
+    <h1>Privacy Policy / गोपनीयता नीति</h1>
+    <p>Effective date: Set by the operator before launch. प्रभावी तिथि: ऑपरेटर लॉन्च से पहले तय करे। This notice describes what this MedConnect deployment does. The operator must replace the support contact below and obtain local privacy/legal review before inviting the public.</p>
+    <p class="notice">MedConnect is a medicine-tracking and general-information tool, not a medical provider. Do not enter information you do not want the person operating this server to process.</p>
+
+    <section lang="en">
+        <h2>English</h2>
+        <h3>Information processed</h3>
+        <ul>
+            <li>When you create an account: your name, email address, password hash, and the time you accept the Terms of Use and Privacy Policy.</li>
+            <li>If you use medicine tracking: medicine names, scheduled times, and dose events. The history view keeps the latest seven days; older events are removed the next time your history is loaded. Account and schedule data otherwise remain until you delete the account.</li>
+            <li>If you request a password reset: your email, a one-time-code hash and expiry, failed-attempt count, and a keyed hash of the request IP address. Codes expire after ten minutes and are removed after they expire when the reset flow or app cleanup next runs.</li>
+            <li>To reduce automated abuse, the app temporarily stores keyed hashes of request IP addresses and request counts for sign-up, login, password-reset, and assistant limits. These are not plain IP addresses and old counters are pruned on later requests.</li>
+            <li>The AI/health assistant receives the question you submit so this server can produce its built-in general-information response. Guest questions are not added to your medicine account or saved by the assistant feature.</li>
+            <li>Speech-to-text is provided by the browser. The browser or its speech-recognition provider may process microphone audio under its own settings and privacy terms. MedConnect does not receive or store the microphone audio; it receives text only when you submit your question.</li>
+            <li>Your browser stores your chosen interface language and local reminder markers. Browser notification and microphone permissions are controlled by you.</li>
+        </ul>
+        <h3>Use, access, and disclosure</h3>
+        <p>Information is used to operate account login, medicine schedules, dose history, password resets, abuse prevention, and the assistant response. The operator and hosting, email, DNS, and speech-service providers may process information as needed to provide their services. Do not claim that a provider never keeps technical logs; check your provider settings and contracts.</p>
+        <h3>Retention and deletion</h3>
+        <p>Use Account and Privacy → Permanently delete my account and confirm with your password to remove your account, medicine schedules, dose history, and password-reset records from the live database. The operator must also apply and document a backup-retention period: deletion from a backup is complete only when that backup expires or is securely removed. Temporary abuse-prevention counters expire as their windows are revisited.</p>
+        <h3>Security and contact</h3>
+        <p>The app uses password hashing, signed session cookies, HTTPS in the supplied production setup, and server-side access checks. No internet service is risk-free. Do not use this app for urgent care or as a substitute for a clinician. For privacy requests or questions, contact: <strong>{{ support_email or "Set MEDCONNECT_SUPPORT_EMAIL before public launch" }}</strong>.</p>
+    </section>
+
+    <section lang="hi">
+        <h2>हिंदी</h2>
+        <h3>कौन-सी जानकारी इस्तेमाल होती है</h3>
+        <ul>
+            <li>खाता बनाते समय: आपका नाम, ईमेल, पासवर्ड का सुरक्षित हैश और उपयोग की शर्तें/गोपनीयता नीति स्वीकार करने का समय।</li>
+            <li>दवा ट्रैकिंग में: दवा के नाम, समय-सारणी और खुराक की प्रविष्टियाँ। इतिहास में पिछले 7 दिनों की जानकारी दिखाई जाती है; पुरानी प्रविष्टियाँ इतिहास अगली बार खुलने पर हटती हैं। खाता और दवाओं की समय-सारणी खाता मिटाने तक रहती है।</li>
+            <li>पासवर्ड रीसेट में: ईमेल, OTP का हैश व समाप्ति समय, गलत कोशिशों की गिनती और अनुरोध वाले IP पते का keyed hash। OTP 10 मिनट में समाप्त होता है और अगली reset प्रक्रिया या app cleanup पर हटता है।</li>
+            <li>दुरुपयोग रोकने के लिए साइन अप, लॉग इन, पासवर्ड रीसेट और सहायक पर अनुरोधों की गिनती तथा IP पते के keyed hash अस्थायी रूप से रखे जाते हैं। सामान्य IP पता सहेजा नहीं जाता और आगे के अनुरोधों पर पुराने counters हटते हैं।</li>
+            <li>सहायक को आपका भेजा हुआ सवाल सामान्य जानकारी वाला जवाब बनाने के लिए सर्वर पर मिलता है। अतिथि सवाल आपके दवा खाते में नहीं जुड़ते और सहायक उन्हें सहेजता नहीं है।</li>
+            <li>बोलकर लिखने की सुविधा ब्राउज़र देता है। ब्राउज़र या उसकी speech-service माइक्रोफ़ोन ऑडियो अपने नियमों और सेटिंग के अनुसार प्रोसेस कर सकती है। MedConnect ऑडियो प्राप्त या सहेजता नहीं; सवाल भेजने पर केवल पहचाना हुआ टेक्स्ट मिलता है।</li>
+            <li>ब्राउज़र आपकी चुनी हुई भाषा और reminder markers रखता है। माइक्रोफ़ोन और notifications की अनुमति आप नियंत्रित करते हैं।</li>
+        </ul>
+        <h3>जानकारी का उपयोग और सेवा प्रदाता</h3>
+        <p>जानकारी का उपयोग लॉगिन, दवा समय-सारणी, खुराक इतिहास, पासवर्ड रीसेट, दुरुपयोग रोकने और सहायक का जवाब बनाने में होता है। ऐप ऑपरेटर और hosting, email, DNS व speech सेवा प्रदाता अपनी सेवाएँ देने के लिए जानकारी प्रोसेस कर सकते हैं। तकनीकी logs की नीति अलग से जाँचें।</p>
+        <h3>जानकारी मिटाना</h3>
+        <p>खाता और गोपनीयता → मेरा खाता स्थायी रूप से मिटाएँ में पासवर्ड और पुष्टि देने पर live database से खाता, दवाओं की समय-सारणी, खुराक इतिहास और password-reset रिकॉर्ड मिटते हैं। Operator को backups के लिए भी अवधि तय करके लागू करनी होगी; backup की कॉपी उसकी सुरक्षित deletion/समाप्ति तक रह सकती है।</p>
+        <h3>सुरक्षा और संपर्क</h3>
+        <p>ऐप पासवर्ड hash, signed session cookie, दिए गए production setup में HTTPS और server-side access checks इस्तेमाल करता है; कोई इंटरनेट सेवा पूर्ण जोखिम-मुक्त नहीं है। यह आपातकालीन सेवा या डॉक्टर का विकल्प नहीं है। गोपनीयता अनुरोध के लिए संपर्क: <strong>{{ support_email or "सार्वजनिक लॉन्च से पहले MEDCONNECT_SUPPORT_EMAIL सेट करें" }}</strong>।</p>
+    </section>
+
+    <p><a href="/">MedConnect पर वापस जाएँ</a></p>
+</body>
+</html>

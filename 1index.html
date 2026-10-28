@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedConnect - Medicine Tracker</title>
+    <style>
+        :root {
+            --bg: #090d16;
+            --card-bg: #131a26;
+            --accent: #00f2fe;
+            --accent-hover: #4facfe;
+            --text-main: #94a3b8;
+            --text-light: #ffffff;
+            --border: #1e293b;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(var(--border) 1px, transparent 0),
+                radial-gradient(var(--border) 1px, transparent 0);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            width: 100%;
+            background: rgba(19, 26, 38, 0.8);
+            backdrop-filter: blur(10px);
+            color: var(--text-light);
+            padding: 18px 0;
+            text-align: center;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+            font-size: 24px;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .navbar span {
+            color: var(--accent);
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+        }
+
+        .hospital-banner {
+            width: 90%;
+            max-width: 1000px;
+            margin: 25px auto 0 auto;
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            color: #090d16;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 16px;
+            box-shadow: 0 10px 20px rgba(0, 242, 254, 0.2);
+        }
+
+        .main-container {
+            width: 90%;
+            max-width: 1000px;
+            margin: 25px auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        .main-container.guest-mode { grid-template-columns: 1fr; }
+        .main-container.guest-mode #assistant-panel { grid-column: 1 / -1; }
+
+        @media (max-width: 768px) {
+            .main-container { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+            box-shadow: 0 15px 30px rgba(0, 242, 254, 0.1);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-light);
+            margin-top: 0;
+            margin-bottom: 25px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+            display: block;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--text-light);
+            background: #0d131e;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15);
+            background: #090d16;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            color: #020304;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            transform: scale(1.01);
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
+        }
+
+        button:disabled {
+            cursor: wait;
+            opacity: 0.7;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .output-container {
+            margin-top: 25px;
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+        }
+
+        .voice-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .voice-button {
+            width: auto;
+            margin-bottom: 20px;
+            padding: 10px 14px;
+            background: #334155;
+            color: var(--text-light);
+        }
+        .voice-button[aria-pressed="true"] { background: #b91c1c; }
+        .voice-status, .voice-privacy-note {
+            margin: -12px 0 16px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .voice-privacy-note { color: #64748b; }
+
+        #chat-output {
+            background: #0d131e;
+            border-left: 4px solid var(--accent);
+            padding: 18px;
+            border-radius: 12px;
+            min-height: 60px;
+            font-size: 15px;
+            color: #e2e8f0;
+            line-height: 1.6;
+            white-space: pre-line;
+        }
+
+        .footer-text {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: #475569;
+            font-size: 13px;
+            margin-top: 10px;
+            margin-bottom: 30px;
+        }
+
+        /* Highlighted Developer Tag */
+        .developer-tag {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 15px;
+            margin-top: 8px;
+            text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+        }
+
+        [hidden] { display: none !important; }
+        .navbar { display: flex; justify-content: center; align-items: center; gap: 12px; }
+        .navbar .brand { color: var(--text-light); }
+        .navbar .account-actions { position: absolute; right: 5%; font-size: 14px; }
+        .navbar .language-switch { position: absolute; left: 5%; }
+        .navbar .language-switch select { width: auto; margin: 0; padding: 8px 10px; font-size: 14px; }
+        .navbar .account-actions button, .auth-switch {
+            width: auto;
+            padding: 8px 12px;
+            font-size: 13px;
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--border);
+        }
+        .emergency-call {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            z-index: 10;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 52px;
+            padding: 12px 18px;
+            border-radius: 999px;
+            background: #dc2626;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 8px 24px rgba(220, 38, 38, 0.4);
+        }
+        .emergency-call:hover, .emergency-call:focus-visible {
+            background: #b91c1c;
+            box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.3);
+            outline: none;
+        }
+        @media (max-width: 600px) {
+            .emergency-call {
+                right: 14px;
+                bottom: 14px;
+                min-height: 48px;
+                padding: 11px 15px;
+                font-size: 14px;
+            }
+        }
+        .auth-container { width: min(92%, 460px); margin: 48px auto; }
+        .auth-container .card { padding: 32px; }
+        .auth-container p { line-height: 1.6; }
+        .auth-switch { margin-top: 14px; }
+        .policy-consent { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0; }
+        .policy-consent input { flex: 0 0 auto; width: auto; margin: 3px 0 0; }
+        .policy-consent label { margin: 0; color: var(--text-main); text-transform: none; line-height: 1.6; }
+        .policy-consent a, .legal-links a { color: var(--accent); }
+        .legal-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 12px; }
+        .danger-button { background: #991b1b; color: #fff; }
+        .delete-status { min-height: 24px; color: #fca5a5; }
+        .forgot-password {
+            width: auto; margin: -6px 0 16px; padding: 4px 0;
+            background: transparent; color: var(--accent); font-size: 14px;
+        }
+        .auth-message { min-height: 24px; color: #fca5a5; }
+        .medicine-form { display: grid; grid-template-columns: 1fr 170px; gap: 0 14px; }
+        .medicine-form button { grid-column: 1 / -1; margin-bottom: 20px; }
+        .medicine-list, .history-list { display: grid; gap: 12px; }
+        .medicine-item, .history-item {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 14px; border: 1px solid var(--border); border-radius: 12px;
+            background: #0d131e; color: #e2e8f0;
+        }
+        .medicine-item strong, .history-item strong { display: block; color: var(--text-light); }
+        .medicine-item small, .history-item small { display: block; color: var(--text-main); margin-top: 5px; }
+        .medicine-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+        .medicine-actions button { width: auto; padding: 9px 12px; font-size: 13px; }
+        .medicine-actions .secondary { color: var(--text-light); background: #334155; }
+        .taken-badge { color: #86efac; font-size: 13px; white-space: nowrap; }
+        .missed-badge { color: #fca5a5; font-size: 13px; white-space: nowrap; }
+        .empty-state { color: var(--text-main); margin: 0; line-height: 1.6; }
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        }
+        .dashboard { width: 90%; max-width: 1000px; margin: 25px auto; }
+        .dashboard .main-container { display: block; width: 100%; margin: 0; }
+        .dashboard .card:hover { transform: none; }
+        .dashboard-nav {
+            display: flex; gap: 12px; margin-bottom: 20px; padding: 8px;
+            border: 1px solid var(--border); border-radius: 16px; background: var(--card-bg);
+        }
+        .dashboard-nav button {
+            width: auto; flex: 1; padding: 12px 16px;
+            color: var(--text-main); background: transparent;
+        }
+        .dashboard-nav button:hover { transform: none; box-shadow: none; }
+        .dashboard-nav button[aria-current="page"] {
+            color: #020304; background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+        }
+        .dashboard-panel { margin-bottom: 24px; }
+        .dashboard-panel .card { width: 100%; box-sizing: border-box; }
+        @media (max-width: 600px) {
+            .navbar { padding: 16px 0; font-size: 18px; }
+            .navbar { flex-wrap: wrap; }
+            .navbar .account-actions, .navbar .language-switch { position: static; }
+            .navbar .language-switch select { margin: 0; }
+            .dashboard-nav { flex-direction: column; }
+            .dashboard-nav button { width: 100%; }
+            .medicine-form { grid-template-columns: 1fr; }
+            .medicine-form button { grid-column: auto; }
+            .medicine-item { align-items: flex-start; flex-direction: column; }
+            .medicine-actions { justify-content: flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="brand">🏥 MedConnect <span data-i18n="brandSubtitle">Health Companion</span></div>
+        <div class="language-switch">
+            <label class="sr-only" for="assistant-language" data-i18n="interfaceLanguage">Interface language</label>
+            <select id="assistant-language" aria-label="Interface language">
+                <option value="hi">Hindi / हिन्दी</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+        <div class="account-actions" id="account-actions" hidden>
+            <span id="welcome-user"></span>
+            <button type="button" onclick="logout()" data-i18n="logout">Logout</button>
+        </div>
+    </div>
+
+    <a class="emergency-call" href="tel:108" aria-label="Call ambulance at 108" data-i18n-aria-label="emergencyCall">
+        <span aria-hidden="true">🆘</span>
+        <span data-i18n="emergencyCall">SOS • Ambulance 108</span>
+    </a>
+
+    <div class="hospital-banner">
+        <span data-i18n="banner">💖 Apni dawaon ka schedule banayein aur li hui dose ka record rakhein.</span>
+    </div>
+
+    <section class="auth-container" id="auth-container">
+        <div class="card">
+            <h1 class="card-title" id="auth-title">Apna account banayein</h1>
+            <p data-i18n="authIntro">MedConnect mein sign up karke apna medicine schedule aur history surakshit rakhein.</p>
+            <form id="signup-form">
+                <label for="signup-name" data-i18n="name">Aapka naam</label>
+                <input id="signup-name" name="name" autocomplete="name" maxlength="100" required>
+                <label for="signup-email" data-i18n="email">Email</label>
+                <input id="signup-email" name="email" type="email" autocomplete="email" required>
+                <label for="signup-password" data-i18n="signupPassword">Password (kam se kam 8 characters)</label>
+                <input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+                <div class="policy-consent">
+                    <input id="policy-accepted" name="policy_accepted" type="checkbox" value="true" required>
+                    <label for="policy-accepted"><span data-i18n="policyConsent">I agree to the Terms of Use and acknowledge the Privacy Policy.</span> <a href="/terms" target="_blank" rel="noopener noreferrer" data-i18n="termsLink">Terms of Use</a> · <a href="/privacy" target="_blank" rel="noopener noreferrer" data-i18n="privacyLink">Privacy Policy</a></label>
+                </div>
+                <button type="submit" data-i18n="signup">Sign up karein</button>
+            </form>
+            <form id="login-form" hidden>
+                <label for="login-email" data-i18n="email">Email</label>
+                <input id="login-email" name="email" type="email" autocomplete="email" required>
+                <label for="login-password" data-i18n="password">Password</label>
+                <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+                <button type="submit" data-i18n="login">Login karein</button>
+            </form>
+            <button class="forgot-password" id="forgot-password-button" type="button" onclick="showPasswordReset()" hidden data-i18n="forgotPassword">🔑 Password bhool gaye?</button>
+            <form id="reset-request-form" hidden>
+                <p data-i18n="resetIntro">Apna Gmail address bharein. OTP email se verify karne ke baad naya password set kar sakte hain.</p>
+                <label for="reset-request-email" data-i18n="gmailAddress">Gmail address</label>
+                <input id="reset-request-email" type="email" autocomplete="email" placeholder="name@gmail.com" required>
+                <button type="submit" data-i18n="sendOtp">OTP bhejein</button>
+            </form>
+            <form id="reset-confirm-form" hidden>
+                <label for="reset-confirm-email" data-i18n="gmailAddress">Gmail address</label>
+                <input id="reset-confirm-email" type="email" readonly>
+                <label for="reset-otp" data-i18n="emailOtp">Email par mila 6-digit OTP</label>
+                <input id="reset-otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+                <label for="reset-new-password" data-i18n="newPassword">Naya password (kam se kam 8 characters)</label>
+                <input id="reset-new-password" type="password" autocomplete="new-password" minlength="8" required>
+                <button type="submit" data-i18n="changePassword">Password badlein</button>
+            </form>
+            <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
+            <button class="auth-switch" id="reset-back-button" type="button" onclick="toggleAuthMode()" hidden data-i18n="backToLogin">← Login par wapas jaayein</button>
+            <button class="auth-switch" id="auth-switch" type="button" onclick="toggleAuthMode()">Pehle se account hai? Login karein</button>
+            <button class="auth-switch" id="guest-assistant-button" type="button" onclick="enterGuestMode()" data-i18n="continueAsGuest">Bina login assistant use karein</button>
+        </div>
+    </section>
+
+    <section class="dashboard" id="dashboard" hidden>
+        <nav class="dashboard-nav" aria-label="MedConnect sections" data-i18n-aria-label="dashboardSections">
+            <button type="button" aria-current="page" aria-controls="alarms-panel" onclick="showDashboardSection('alarms')" data-i18n="alarmsTab">⏰ Dawa ke alarms</button>
+            <button type="button" aria-current="false" aria-controls="history-panel" onclick="showDashboardSection('history')" data-i18n="historyTab">📋 Dawa ki history</button>
+            <button type="button" aria-current="false" aria-controls="assistant-panel" onclick="showDashboardSection('assistant')" data-i18n="assistantTab">🤖 Health Assistant</button>
+            <button type="button" aria-current="false" aria-controls="account-panel" onclick="showDashboardSection('account')" data-i18n="accountTab">🔒 Account and privacy</button>
+        </nav>
+        <div class="main-container">
+            <section class="dashboard-panel" id="alarms-panel" aria-label="Dawa ke alarms" data-i18n-aria-label="alarmsTab">
+                <div class="card">
+                    <h2 class="card-title" data-i18n="myAlarms">⏰ Meri dawaon ke alarms</h2>
+                    <form class="medicine-form" id="medicine-form">
+                        <div>
+                            <label for="med-name" data-i18n="medicineName">Dawa ka naam</label>
+                            <input type="text" id="med-name" maxlength="120" placeholder="Jaise: Doctor ki prescribed dawa" data-i18n-placeholder="medicinePlaceholder" required>
+                        </div>
+                        <div>
+                            <label for="med-time" data-i18n="doseTime">Dose ka samay</label>
+                            <input type="time" id="med-time" required>
+                        </div>
+                        <button id="add-medication-button" type="submit" data-i18n="addMedicine">＋ Dawa add karein</button>
+                    </form>
+                    <div id="reminder-status" role="status" aria-live="polite" class="empty-state" data-i18n="reminderIntro">
+                        Dawa lene ka alarm bajega; 7 minute baad bhi "Le li" mark na ho to alag awaaz mein reminder milega. 15 minute baad missed-dose reminder milega. Alarm ke liye page khula rakhein.
+                    </div>
+                    <div class="output-container">
+                        <h3 class="card-title" data-i18n="eachMedicineAlarm">Har dawa ka alag alarm</h3>
+                        <p class="empty-state" data-i18n="manyMedicines">Kam se kam 50 dawaon ke alarm add kar sakte hain; koi chhoti fixed limit nahi hai.</p>
+                        <div class="medicine-list" id="medicine-list" aria-live="polite"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="dashboard-panel" id="history-panel" aria-label="Dawa ki history" data-i18n-aria-label="historyTab" hidden>
+                <div class="card">
+                    <h2 class="card-title" data-i18n="lastSevenDays">📋 Pichhle 7 din ki history</h2>
+                    <p class="empty-state" data-i18n="historyIntro">Yahan pichhle 7 din ki dose history dikhegi. 7 din se purane records apne-aap hat jaayenge.</p>
+                    <div class="history-list" id="history-list" aria-live="polite"></div>
+                </div>
+            </section>
+
+            <section class="dashboard-panel" id="assistant-panel" aria-label="Health Assistant" data-i18n-aria-label="assistantTab" hidden>
+                <div class="card">
+                    <h2 class="card-title" data-i18n="healthAssistant">🤖 Dawa aur Health Assistant</h2>
+                    <p class="empty-state" data-i18n="assistantIntro">Yeh section general health jaankari ke liye hai. Personal dawa ya dose ke liye doctor/pharmacist se poochhein.</p>
+                    <button class="auth-switch" id="guest-login-button" type="button" onclick="leaveGuestMode()" hidden data-i18n="loginForPersonalTracking">Dawa schedule ke liye login karein</button>
+                    <label for="user-question" data-i18n="symptomQuestion">Kai lakshan ya dawa ke baare mein poochhein</label>
+                    <textarea id="user-question" rows="4" placeholder="Jaise: bukhar aur khansi mein paracetamol ya ORS ke baare mein bataiye" data-i18n-placeholder="questionPlaceholder"></textarea>
+                    <div class="voice-controls">
+                        <button class="voice-button" id="voice-input-button" type="button" onclick="toggleSpeechInput()" aria-pressed="false" data-i18n="voiceInput">🎙️ Bolkar likhein</button>
+                        <p class="voice-privacy-note" data-i18n="voicePrivacyNote">Microphone permission is required. Your browser's speech service may process audio.</p>
+                    </div>
+                    <p class="voice-status" id="voice-status" role="status" aria-live="polite"></p>
+                    <button id="ask-button" type="button" onclick="askAI()" data-i18n="healthTips">Health tips dekhein</button>
+                    <div class="output-container">
+                        <label data-i18n="healthInformation">General health information:</label>
+                        <div id="chat-output" aria-live="polite" aria-atomic="true" data-i18n="questionPrompt">Apna sawal likhein aur Health Tips dekhein par click karein. Jawab yahan dikhega.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="dashboard-panel" id="account-panel" aria-label="Account and privacy" data-i18n-aria-label="accountTab" hidden>
+                <div class="card">
+                    <h2 class="card-title" data-i18n="accountPrivacyTitle">Account and privacy</h2>
+                    <p class="empty-state" data-i18n="accountPrivacyIntro">Your account contains your email, name, medicines, schedules, and dose history. You can permanently delete this account and its app data here.</p>
+                    <div class="legal-links">
+                        <a href="/privacy" target="_blank" rel="noopener noreferrer" data-i18n="privacyLink">Privacy Policy</a>
+                        <a href="/terms" target="_blank" rel="noopener noreferrer" data-i18n="termsLink">Terms of Use</a>
+                    </div>
+                    <form id="delete-account-form">
+                        <label for="delete-account-password" data-i18n="currentPassword">Current password</label>
+                        <input id="delete-account-password" type="password" autocomplete="current-password" maxlength="256" required>
+                        <div class="policy-consent">
+                            <input id="confirm-account-deletion" type="checkbox" required>
+                            <label for="confirm-account-deletion" data-i18n="confirmAccountDeletion">I understand my account and app data will be permanently deleted.</label>
+                        </div>
+                        <button class="danger-button" type="submit" data-i18n="deleteAccount">Permanently delete my account</button>
+                    </form>
+                    <p class="delete-status" id="delete-account-status" role="status" aria-live="polite"></p>
+                </div>
+            </section>
+
+            <div class="footer-text">
+                <span data-i18n="footerNotice">MedConnect sirf tracking aur general health information ke liye hai; dawa doctor ke nirdesh ke mutabik lein.</span>
+                <div class="developer-tag" data-i18n="developer">🚀 Developed by Prashant Singh</div>
+                <div class="legal-links">
+                    <a href="/privacy" data-i18n="privacyLink">Privacy Policy</a>
+                    <a href="/terms" data-i18n="termsLink">Terms of Use</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        const reminderTimers = new Map();
+        const doseReminderAlerts = new Set();
+        const missedDoseAlerts = new Set();
+        const DOSE_FOLLOW_UP_DELAY_MS = 7 * 60 * 1000;
+        const MISSED_DOSE_DELAY_MS = 15 * 60 * 1000;
+        const LANGUAGE_STORAGE_KEY = 'medconnectAssistantLanguage';
+        const TRANSLATIONS = {
+            en: {
+                brandSubtitle: 'Health Companion',
+                emergencyCall: 'SOS • Ambulance 108',
+                privacyLink: 'Privacy Policy',
+                termsLink: 'Terms of Use',
+                logout: 'Logout',
+                banner: '💖 Schedule your medicines and keep track of each dose.',
+                authIntro: 'Sign up to securely manage your medicine schedule and history.',
+                continueAsGuest: 'Use the assistant without logging in',
+                loginForPersonalTracking: 'Log in for medicine schedules',
+                name: 'Your name',
+                email: 'Email',
+                signupPassword: 'Password (at least 8 characters)',
+                policyConsent: 'I agree to the Terms of Use and acknowledge the Privacy Policy.',
+                password: 'Password',
+                signup: 'Sign up',
+                login: 'Log in',
+                forgotPassword: '🔑 Forgot password?',
+                resetIntro: 'Enter your Gmail address. Verify the email OTP to set a new password.',
+                gmailAddress: 'Gmail address',
+                sendOtp: 'Send OTP',
+                emailOtp: '6-digit OTP from your email',
+                newPassword: 'New password (at least 8 characters)',
+                changePassword: 'Change password',
+                backToLogin: '← Back to login',
+                signupTitle: 'Create your account',
+                loginTitle: 'Log in to your account',
+                resetRequestTitle: 'Reset your password',
+                resetConfirmTitle: 'Verify OTP and change password',
+                authSwitchSignup: 'Already have an account? Log in',
+                authSwitchLogin: 'New here? Sign up',
+                dashboardSections: 'MedConnect sections',
+                alarmsTab: '⏰ Medicine alarms',
+                historyTab: '📋 Medicine history',
+                assistantTab: '🤖 Health Assistant',
+                accountTab: '🔒 Account and privacy',
+                accountPrivacyTitle: 'Account and privacy',
+                accountPrivacyIntro: 'Your account contains your email, name, medicines, schedules, and dose history. You can permanently delete this account and its app data here.',
+                currentPassword: 'Current password',
+                confirmAccountDeletion: 'I understand my account and app data will be permanently deleted.',
+                deleteAccount: 'Permanently delete my account',
+                accountDeleted: 'Your account and app data have been permanently deleted.',
+                deleteAccountFailed: 'Could not delete the account: {error}',
+                myAlarms: '⏰ My medicine alarms',
+                medicineName: 'Medicine name',
+                medicinePlaceholder: "For example: a medicine prescribed by your doctor",
+                doseTime: 'Dose time',
+                addMedicine: '＋ Add medicine',
+                reminderIntro: 'If a dose is still not marked as taken 7 minutes after its alarm, you will get a reminder with a different sound. A missed-dose reminder follows after 15 minutes. Keep this page open for alarms.',
+                eachMedicineAlarm: 'A separate alarm for each medicine',
+                manyMedicines: 'You can add alarms for many medicines; there is no small fixed limit.',
+                lastSevenDays: '📋 History for the last 7 days',
+                historyIntro: 'Your dose history for the last 7 days appears here. Older records are automatically removed.',
+                healthAssistant: '🤖 Medicine and Health Assistant',
+                assistantIntro: 'This section provides general health information. Ask a doctor or pharmacist about personal medicine or dosage advice.',
+                interfaceLanguage: 'Interface language',
+                symptomQuestion: 'Ask about multiple symptoms or medicines',
+                questionPlaceholder: 'For example: fever and cough, and general information about paracetamol or ORS',
+                voiceInput: '🎙️ Speak to type',
+                voiceInputStop: '⏹ Stop voice input',
+                voiceListening: 'Listening... Speak now.',
+                voiceStopped: 'Voice input stopped.',
+                voiceTextAdded: 'Speech added to your question.',
+                voiceUnsupported: 'Speech-to-text is not supported in this browser. Try a current version of Chrome.',
+                voicePermissionDenied: 'Microphone access was denied. Allow it in your browser settings and try again.',
+                voiceNoSpeech: 'No speech was detected. Try again and speak clearly.',
+                voiceAudioCapture: 'No microphone was found or it could not be accessed.',
+                voiceNetwork: 'Speech recognition needs an internet connection. Check your connection and try again.',
+                voiceFailed: 'Speech recognition failed. Please try again or type your question.',
+                voicePrivacyNote: 'Microphone permission is required. Your browser’s speech service may process audio.',
+                healthTips: 'View health tips',
+                healthInformation: 'General health information:',
+                questionPrompt: 'Type your question and select View health tips. Your answer will appear here.',
+                footerNotice: 'MedConnect is for tracking and general health information only. Take medicines as directed by your doctor.',
+                developer: '🚀 Developed by Prashant Singh',
+                welcomeUser: 'Hello, {name}',
+                signupRequiredFields: 'Please enter a name, email address, and password.',
+                loginRequiredFields: 'Please enter your email address and password.',
+                forgotPasswordRequired: 'Please enter your email address first.',
+                forgotPasswordConfirm: 'If that email has an account, password reset instructions will be sent.',
+                otpSent: 'A 10-minute OTP was sent to your Gmail address.',
+                passwordChanged: 'Your password has been changed.',
+                serverConnectError: '❌ Could not connect to the server: {error}',
+                dashboardLoadError: '❌ Could not load medicines: {error}',
+                emptyMedicines: 'No medicines added yet. Enter a name and time above.',
+                everyDay: 'Daily at {time}',
+                medicineTakenBadge: '✓ Taken',
+                markTaken: 'Mark taken',
+                removeFromSchedule: 'Remove from schedule',
+                emptyHistory: 'There is no dose history yet.',
+                takenHistory: '✓ Taken: {name}',
+                missedHistory: '⚠ Missed: {name}',
+                recordedAt: '{date} • {action}: {time}',
+                historyMarked: 'Recorded in dose history.',
+                historyAction: 'Recorded',
+                missedAction: 'Missed',
+                dateLocale: 'en-US',
+                nameAndTimeRequired: '⚠️ Enter both the medicine name and alarm time.',
+                invalidTime: '⚠️ Select a valid alarm time.',
+                medicineAdded: '✅ "{name}" added for every day at {time}.',
+                addMedicineFailed: '❌ Could not add medicine: {error}',
+                saveDoseFailed: '❌ Could not save dose: {error}',
+                removeConfirm: 'Remove this medicine from the schedule? Its past history will be kept.',
+                removeFailed: '❌ Could not remove medicine: {error}',
+                logoutFailed: '❌ Could not log out: {error}',
+                missedCheckFailed: '❌ Could not check missed dose: {error}',
+                missedNotificationTitle: 'MedConnect: missed dose reminder',
+                reminderNotificationTitle: 'MedConnect medicine reminder',
+                followUpNotificationTitle: 'MedConnect: dose reminder',
+                missedNotification: '"{name}" is not marked as taken yet. If you have taken it, mark it as taken in the app.',
+                reminderNotification: 'It is time to take {name}.',
+                followUpNotification: '"{name}" is still not marked as taken. Please check and update your dose.',
+                missedReminder: '⚠️ Missed dose: "{name}" is not marked as taken yet.',
+                doseReminder: '⏰ It is time to take "{name}". Mark it as taken after your dose.',
+                followUpReminder: '🔔 Follow-up: "{name}" is still not marked as taken. Please check and update your dose.',
+                askQuestion: '⚠️ Please type your question first.',
+                loadingTips: 'Loading health tips...',
+                apiInvalidJson: 'The server returned an invalid response (status {status}).',
+                serverError: 'Server error: status {status}.',
+                missingServerAnswer: 'The server did not return an answer. Please try again.',
+                assistantConnectionError: '❌ Could not connect to the server. Start the Flask server and, if needed, open the app using its Cloudflare Tunnel URL.',
+                requestFailed: '❌ {error}',
+                outputLoading: '⏳ Loading health tips...',
+                loadingMedicine: 'Loading...',
+                resetSuccess: '✅ {message}',
+                backendErrors: {
+                    'Sahi naam aur email address bharein.': 'Please enter a valid name and email address.',
+                    'Password kam se kam 8 characters ka hona chahiye.': 'Password must be at least 8 characters.',
+                    'Is email se account pehle se bana hua hai.': 'An account with this email already exists.',
+                    'Email ya password sahi nahi hai.': 'The email or password is incorrect.',
+                    'Pehle login karein.': 'Please log in first.',
+                    'Sahi Gmail address bharein.': 'Please enter a valid Gmail address.',
+                    'Yeh dawa nahi mili.': 'Medicine not found.',
+                    'Dawa ka naam aur sahi samay bharein.': 'Enter a medicine name and valid time.',
+                    'Request JSON format sahi nahi hai.': 'The request format is invalid.',
+                    'Sign up karne ke liye privacy policy aur terms se sahmat hona zaroori hai.': 'Please agree to the Terms of Use and acknowledge the Privacy Policy to sign up.',
+                    'Account delete karne ke liye current password bharein.': 'Enter your current password to delete your account.',
+                    'Password sahi nahi hai; account delete nahi hua.': 'The password is incorrect. Your account was not deleted.',
+                    'Bahut saari requests hui hain. Thodi der baad dobara koshish karein.': 'Too many requests. Please wait and try again.'
+                }
+            },
+            hi: {
+                brandSubtitle: 'स्वास्थ्य साथी',
+                emergencyCall: 'SOS • एम्बुलेंस 108',
+                privacyLink: 'गोपनीयता नीति',
+                termsLink: 'उपयोग की शर्तें',
+                logout: 'लॉग आउट',
+                banner: '💖 अपनी दवाओं का समय तय करें और हर खुराक का रिकॉर्ड रखें।',
+                authIntro: 'दवाओं का समय और इतिहास सुरक्षित रखने के लिए साइन अप करें।',
+                continueAsGuest: 'बिना लॉगिन सहायक का उपयोग करें',
+                loginForPersonalTracking: 'दवा के समय के लिए लॉग इन करें',
+                name: 'आपका नाम',
+                email: 'ईमेल',
+                signupPassword: 'पासवर्ड (कम से कम 8 अक्षर)',
+                policyConsent: 'मैं उपयोग की शर्तों से सहमत हूँ और गोपनीयता नीति को स्वीकार करता/करती हूँ।',
+                password: 'पासवर्ड',
+                signup: 'साइन अप करें',
+                login: 'लॉग इन करें',
+                forgotPassword: '🔑 पासवर्ड भूल गए?',
+                resetIntro: 'अपना Gmail पता भरें। ईमेल OTP सत्यापित करके नया पासवर्ड बनाएँ।',
+                gmailAddress: 'Gmail पता',
+                sendOtp: 'OTP भेजें',
+                emailOtp: 'ईमेल पर मिला 6 अंकों का OTP',
+                newPassword: 'नया पासवर्ड (कम से कम 8 अक्षर)',
+                changePassword: 'पासवर्ड बदलें',
+                backToLogin: '← लॉग इन पर वापस जाएँ',
+                signupTitle: 'अपना खाता बनाएँ',
+                loginTitle: 'अपने खाते में लॉग इन करें',
+                resetRequestTitle: 'पासवर्ड रीसेट करें',
+                resetConfirmTitle: 'OTP सत्यापित करके पासवर्ड बदलें',
+                authSwitchSignup: 'पहले से खाता है? लॉग इन करें',
+                authSwitchLogin: 'नए हैं? साइन अप करें',
+                dashboardSections: 'MedConnect अनुभाग',
+                alarmsTab: '⏰ दवाओं के अलार्म',
+                historyTab: '📋 दवाओं का इतिहास',
+                assistantTab: '🤖 स्वास्थ्य सहायक',
+                accountTab: '🔒 खाता और गोपनीयता',
+                accountPrivacyTitle: 'खाता और गोपनीयता',
+                accountPrivacyIntro: 'आपके खाते में ईमेल, नाम, दवाओं, उनके समय और खुराक का इतिहास रहता है। यहाँ से आप खाता और ऐप का डेटा स्थायी रूप से मिटा सकते हैं।',
+                currentPassword: 'वर्तमान पासवर्ड',
+                confirmAccountDeletion: 'मैं समझता/समझती हूँ कि मेरा खाता और ऐप का डेटा स्थायी रूप से मिट जाएगा।',
+                deleteAccount: 'मेरा खाता स्थायी रूप से मिटाएँ',
+                accountDeleted: 'आपका खाता और ऐप का डेटा स्थायी रूप से मिटा दिया गया है।',
+                deleteAccountFailed: 'खाता नहीं मिटा: {error}',
+                myAlarms: '⏰ मेरी दवाओं के अलार्म',
+                medicineName: 'दवा का नाम',
+                medicinePlaceholder: 'जैसे: डॉक्टर द्वारा लिखी गई दवा',
+                doseTime: 'खुराक का समय',
+                addMedicine: '＋ दवा जोड़ें',
+                reminderIntro: 'दवा के अलार्म के 7 मिनट बाद भी खुराक को लिया हुआ न बताएँ, तो अलग आवाज़ में रिमाइंडर मिलेगा। 15 मिनट बाद छूटी खुराक का रिमाइंडर आएगा। अलार्म के लिए यह पेज खुला रखें।',
+                eachMedicineAlarm: 'हर दवा के लिए अलग अलार्म',
+                manyMedicines: 'कई दवाओं के अलार्म जोड़ सकते हैं; कोई छोटी तय सीमा नहीं है।',
+                lastSevenDays: '📋 पिछले 7 दिनों का इतिहास',
+                historyIntro: 'पिछले 7 दिनों की खुराक का इतिहास यहाँ दिखेगा। पुराने रिकॉर्ड अपने-आप हट जाएँगे।',
+                healthAssistant: '🤖 दवा और स्वास्थ्य सहायक',
+                assistantIntro: 'यह अनुभाग सामान्य स्वास्थ्य जानकारी देता है। व्यक्तिगत दवा या खुराक के लिए डॉक्टर या फार्मासिस्ट से पूछें।',
+                interfaceLanguage: 'इंटरफ़ेस की भाषा',
+                symptomQuestion: 'कई लक्षणों या दवाओं के बारे में पूछें',
+                questionPlaceholder: 'जैसे: बुखार और खाँसी में पैरासिटामोल या ओआरएस की सामान्य जानकारी',
+                voiceInput: '🎙️ बोलकर लिखें',
+                voiceInputStop: '⏹ बोलना रोकें',
+                voiceListening: 'सुन रहे हैं... अब बोलें।',
+                voiceStopped: 'वॉइस इनपुट बंद हो गया।',
+                voiceTextAdded: 'आपका बोला हुआ सवाल लिख दिया गया है।',
+                voiceUnsupported: 'इस ब्राउज़र में बोलकर लिखने की सुविधा नहीं है। Chrome के नए संस्करण में कोशिश करें।',
+                voicePermissionDenied: 'माइक्रोफ़ोन की अनुमति नहीं मिली। ब्राउज़र सेटिंग में अनुमति देकर फिर कोशिश करें।',
+                voiceNoSpeech: 'आवाज़ नहीं मिली। फिर कोशिश करें और साफ़ बोलें।',
+                voiceAudioCapture: 'माइक्रोफ़ोन नहीं मिला या उसे इस्तेमाल नहीं किया जा सका।',
+                voiceNetwork: 'वॉइस पहचानने के लिए इंटरनेट चाहिए। कनेक्शन जाँचकर फिर कोशिश करें।',
+                voiceFailed: 'वॉइस पहचान नहीं हो पाई। फिर कोशिश करें या सवाल टाइप करें।',
+                voicePrivacyNote: 'माइक्रोफ़ोन की अनुमति ज़रूरी है। आपके ब्राउज़र की वॉइस सेवा ऑडियो प्रोसेस कर सकती है।',
+                healthTips: 'स्वास्थ्य सुझाव देखें',
+                healthInformation: 'सामान्य स्वास्थ्य जानकारी:',
+                questionPrompt: 'अपना सवाल लिखें और स्वास्थ्य सुझाव देखें पर क्लिक करें। जवाब यहाँ दिखेगा।',
+                footerNotice: 'MedConnect केवल रिकॉर्ड और सामान्य स्वास्थ्य जानकारी के लिए है। दवा डॉक्टर के निर्देशानुसार लें।',
+                developer: '🚀 निर्माता: Prashant Singh',
+                welcomeUser: 'नमस्ते, {name}',
+                signupRequiredFields: '⚠️ नाम, ईमेल और पासवर्ड भरें।',
+                loginRequiredFields: '⚠️ ईमेल और पासवर्ड भरें।',
+                forgotPasswordRequired: 'पहले अपना ईमेल पता भरें।',
+                forgotPasswordConfirm: 'यदि इस ईमेल से खाता है, तो पासवर्ड रीसेट के निर्देश भेजे जाएँगे।',
+                otpSent: 'आपके Gmail पर 10 मिनट के लिए मान्य OTP भेजा गया है।',
+                passwordChanged: 'आपका पासवर्ड बदल दिया गया है।',
+                serverConnectError: '❌ सर्वर से कनेक्ट नहीं हो पाया: {error}',
+                dashboardLoadError: '❌ दवाएँ लोड नहीं हो सकीं: {error}',
+                emptyMedicines: 'अभी कोई दवा नहीं जोड़ी गई। ऊपर नाम और समय भरें।',
+                everyDay: 'रोज़ {time} बजे',
+                medicineTakenBadge: '✓ दवा ली',
+                markTaken: 'ले ली',
+                removeFromSchedule: 'समय-सूची से हटाएँ',
+                emptyHistory: 'अभी तक खुराक का कोई इतिहास नहीं है।',
+                takenHistory: '✓ ली गई: {name}',
+                missedHistory: '⚠ नहीं ली: {name}',
+                recordedAt: '{date} • {action}: {time}',
+                historyMarked: '✅ खुराक का इतिहास सहेज दिया।',
+                historyAction: 'दर्ज',
+                missedAction: 'छूटी',
+                dateLocale: 'hi-IN',
+                nameAndTimeRequired: '⚠️ दवा का नाम और अलार्म का समय दोनों भरें।',
+                invalidTime: '⚠️ सही अलार्म का समय चुनें।',
+                medicineAdded: '✅ "{name}" रोज़ {time} बजे के लिए जोड़ दी गई।',
+                addMedicineFailed: '❌ दवा नहीं जुड़ सकी: {error}',
+                saveDoseFailed: '❌ खुराक सहेजी नहीं जा सकी: {error}',
+                removeConfirm: 'क्या इस दवा को समय-सूची से हटाएँ? इसका पुराना इतिहास बना रहेगा।',
+                removeFailed: '❌ दवा हटाई नहीं जा सकी: {error}',
+                logoutFailed: '❌ लॉग आउट नहीं हो सका: {error}',
+                missedCheckFailed: '❌ छूटी खुराक जाँची नहीं जा सकी: {error}',
+                missedNotificationTitle: 'MedConnect: छूटी खुराक का रिमाइंडर',
+                reminderNotificationTitle: 'MedConnect दवा रिमाइंडर',
+                followUpNotificationTitle: 'MedConnect: खुराक रिमाइंडर',
+                missedNotification: '"{name}" को अभी तक ली हुई नहीं बताया गया। यदि ले चुके हैं, तो ऐप में "ले ली" बताएँ।',
+                reminderNotification: '"{name}" लेने का समय हो गया है।',
+                followUpNotification: '"{name}" को अभी तक लिया हुआ नहीं बताया गया है। कृपया जाँचकर खुराक का रिकॉर्ड अपडेट करें।',
+                missedReminder: '⚠️ छूटी खुराक: "{name}" को अभी तक लिया हुआ नहीं बताया गया।',
+                doseReminder: '⏰ "{name}" लेने का समय हो गया। खुराक लेने के बाद "ले ली" बताएँ।',
+                followUpReminder: '🔔 फिर से याद दिलाना: "{name}" को अभी तक लिया हुआ नहीं बताया गया। कृपया जाँचकर रिकॉर्ड अपडेट करें।',
+                askQuestion: '⚠️ पहले अपना सवाल लिखें।',
+                loadingTips: 'स्वास्थ्य सुझाव लोड हो रहे हैं...',
+                apiInvalidJson: 'सर्वर से सही जवाब नहीं मिला (स्थिति {status})।',
+                serverError: 'सर्वर में त्रुटि: स्थिति {status}।',
+                missingServerAnswer: 'सर्वर से जवाब नहीं मिला। कृपया फिर कोशिश करें।',
+                assistantConnectionError: '❌ सर्वर से कनेक्ट नहीं हो पाया। Flask server चालू करें और ज़रूरत हो तो Cloudflare Tunnel लिंक से ऐप खोलें।',
+                requestFailed: '❌ {error}',
+                outputLoading: '⏳ स्वास्थ्य सुझाव लोड हो रहे हैं...',
+                loadingMedicine: 'लोड हो रहा है...',
+                resetSuccess: '✅ {message}',
+                backendErrors: {
+                    'Sahi naam aur email address bharein.': 'सही नाम और ईमेल पता भरें।',
+                    'Password kam se kam 8 characters ka hona chahiye.': 'पासवर्ड कम से कम 8 अक्षर का होना चाहिए।',
+                    'Is email se account pehle se bana hua hai.': 'इस ईमेल से खाता पहले से बना है।',
+                    'Email ya password sahi nahi hai.': 'ईमेल या पासवर्ड सही नहीं है।',
+                    'Pehle login karein.': 'पहले लॉग इन करें।',
+                    'Sahi Gmail address bharein.': 'सही Gmail पता भरें।',
+                    'Yeh dawa nahi mili.': 'यह दवा नहीं मिली।',
+                    'Dawa ka naam aur sahi samay bharein.': 'दवा का नाम और सही समय भरें।',
+                    'Request JSON format sahi nahi hai.': 'अनुरोध का फ़ॉर्मैट सही नहीं है।',
+                    'Sign up karne ke liye privacy policy aur terms se sahmat hona zaroori hai.': 'साइन अप करने के लिए उपयोग की शर्तों और गोपनीयता नीति को स्वीकार करें।',
+                    'Account delete karne ke liye current password bharein.': 'खाता मिटाने के लिए वर्तमान पासवर्ड भरें।',
+                    'Password sahi nahi hai; account delete nahi hua.': 'पासवर्ड सही नहीं है। आपका खाता नहीं मिटाया गया।',
+                    'Bahut saari requests hui hain. Thodi der baad dobara koshish karein.': 'बहुत अधिक अनुरोध हुए हैं। कृपया थोड़ी देर बाद फिर कोशिश करें।'
+                }
+            }
+        };
+        let reminderAudioContext;
+        let authMode = 'signup';
+        let resetEmail = '';
+        let currentUserName = '';
+        let speechRecognition = null;
+        let speechRecognitionActive = false;
+
+        document.getElementById('signup-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            submitAuth('signup');
+        });
+        document.getElementById('login-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            submitAuth('login');
+        });
+        document.getElementById('reset-request-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            requestPasswordReset();
+        });
+        document.getElementById('reset-confirm-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            confirmPasswordReset();
+        });
+        document.getElementById('medicine-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            setReminder();
+        });
+        document.getElementById('delete-account-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            deleteAccount();
+        });
+        const languageSelect = document.getElementById('assistant-language');
+        try {
+            const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+            if (savedLanguage === 'en' || savedLanguage === 'hi') {
+                languageSelect.value = savedLanguage;
+            }
+        } catch (error) {
+            console.error('Could not load assistant language preference:', error);
+        }
+        applyLanguage();
+        languageSelect.addEventListener('change', () => {
+            const wasListening = speechRecognitionActive;
+            if (speechRecognitionActive) stopSpeechInput();
+            try {
+                localStorage.setItem(LANGUAGE_STORAGE_KEY, languageSelect.value);
+            } catch (error) {
+                console.error('Could not save assistant language preference:', error);
+            }
+            applyLanguage();
+            if (wasListening) {
+                document.getElementById('voice-status').textContent = t('voiceStopped');
+            }
+            if (
+                !document.getElementById('dashboard').hidden &&
+                !document.querySelector('.main-container').classList.contains('guest-mode')
+            ) {
+                refreshDashboard();
+            }
+        });
+
+        function t(key, values = {}) {
+            const language = languageSelect.value === 'en' ? 'en' : 'hi';
+            const template = TRANSLATIONS[language][key];
+            if (typeof template !== 'string') return key;
+            return template.replace(/\{(\w+)\}/g, (_match, name) => values[name] ?? '');
+        }
+
+        function localizedError(message) {
+            const language = languageSelect.value === 'en' ? 'en' : 'hi';
+            return TRANSLATIONS[language].backendErrors[message] || message;
+        }
+
+        function setSpeechInputState(isListening) {
+            speechRecognitionActive = isListening;
+            const button = document.getElementById('voice-input-button');
+            button.setAttribute('aria-pressed', String(isListening));
+            button.textContent = t(isListening ? 'voiceInputStop' : 'voiceInput');
+        }
+
+        function stopSpeechInput() {
+            if (speechRecognitionActive && speechRecognition) {
+                speechRecognition.stop();
+            }
+        }
+
+        function toggleSpeechInput() {
+            if (speechRecognitionActive) {
+                stopSpeechInput();
+                return;
+            }
+
+            const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const status = document.getElementById('voice-status');
+            if (!SpeechRecognitionAPI) {
+                status.textContent = t('voiceUnsupported');
+                return;
+            }
+
+            try {
+                const recognition = new SpeechRecognitionAPI();
+                speechRecognition = recognition;
+                recognition.lang = languageSelect.value === 'en' ? 'en-IN' : 'hi-IN';
+                recognition.continuous = true;
+                recognition.interimResults = false;
+                recognition.onstart = () => {
+                    setSpeechInputState(true);
+                    status.textContent = t('voiceListening');
+                };
+                recognition.onresult = (event) => {
+                    const transcripts = [];
+                    for (let index = event.resultIndex; index < event.results.length; index++) {
+                        if (event.results[index].isFinal) {
+                            transcripts.push(event.results[index][0].transcript.trim());
+                        }
+                    }
+                    const spokenText = transcripts.filter(Boolean).join(' ');
+                    if (!spokenText) return;
+
+                    const question = document.getElementById('user-question');
+                    question.value = [question.value.trim(), spokenText].filter(Boolean).join(' ');
+                    status.textContent = t('voiceTextAdded');
+                };
+                recognition.onerror = (event) => {
+                    const errorMessages = {
+                        'not-allowed': 'voicePermissionDenied',
+                        'service-not-allowed': 'voicePermissionDenied',
+                        'no-speech': 'voiceNoSpeech',
+                        'audio-capture': 'voiceAudioCapture',
+                        network: 'voiceNetwork'
+                    };
+                    status.textContent = t(errorMessages[event.error] || 'voiceFailed');
+                };
+                recognition.onend = () => {
+                    setSpeechInputState(false);
+                    speechRecognition = null;
+                    if (status.textContent === t('voiceListening')) {
+                        status.textContent = t('voiceStopped');
+                    }
+                };
+                recognition.start();
+            } catch (error) {
+                console.error('Could not start speech recognition:', error);
+                speechRecognition = null;
+                setSpeechInputState(false);
+                status.textContent = t('voiceFailed');
+            }
+        }
+
+        function applyLanguage() {
+            const language = languageSelect.value === 'en' ? 'en' : 'hi';
+            document.documentElement.lang = language;
+            document.title = language === 'en'
+                ? 'MedConnect - Medicine Tracker'
+                : 'MedConnect - दवा ट्रैकर';
+
+            document.querySelectorAll('[data-i18n]').forEach((element) => {
+                element.textContent = t(element.dataset.i18n);
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
+                element.placeholder = t(element.dataset.i18nPlaceholder);
+            });
+            document.querySelectorAll('[data-i18n-aria-label]').forEach((element) => {
+                element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel));
+            });
+
+            languageSelect.setAttribute('aria-label', t('interfaceLanguage'));
+            languageSelect.options[0].textContent = language === 'en' ? 'Hindi / हिन्दी' : 'हिन्दी';
+            languageSelect.options[1].textContent = 'English';
+            setAuthMode(authMode, document.getElementById('auth-message').textContent);
+            document.getElementById('welcome-user').textContent =
+                document.getElementById('dashboard').hidden
+                    ? ''
+                    : t('welcomeUser', { name: currentUserName });
+        }
+
+        function showDashboardSection(section) {
+            const sections = {
+                alarms: 'alarms-panel',
+                history: 'history-panel',
+                assistant: 'assistant-panel',
+                account: 'account-panel'
+            };
+            const selectedPanel = sections[section];
+            if (!selectedPanel) return;
+
+            Object.entries(sections).forEach(([name, panelId]) => {
+                document.getElementById(panelId).hidden = panelId !== selectedPanel;
+                document.querySelector(`[aria-controls="${panelId}"]`).setAttribute(
+                    'aria-current',
+                    name === section ? 'page' : 'false'
+                );
+            });
+        }
+
+        function enterGuestMode() {
+            document.getElementById('auth-container').hidden = true;
+            document.getElementById('dashboard').hidden = false;
+            document.getElementById('account-actions').hidden = true;
+            document.querySelector('.dashboard-nav').hidden = true;
+            document.querySelector('.main-container').classList.add('guest-mode');
+            document.getElementById('alarms-panel').hidden = true;
+            document.getElementById('history-panel').hidden = true;
+            document.getElementById('account-panel').hidden = true;
+            document.getElementById('assistant-panel').hidden = false;
+            document.getElementById('guest-login-button').hidden = false;
+        }
+
+        function leaveGuestMode() {
+            document.getElementById('dashboard').hidden = true;
+            document.getElementById('auth-container').hidden = false;
+            document.querySelector('.dashboard-nav').hidden = false;
+            document.querySelector('.main-container').classList.remove('guest-mode');
+            document.getElementById('guest-login-button').hidden = true;
+        }
+
+        function clearReminderTimers() {
+            reminderTimers.forEach((timers) => {
+                timers.forEach((timer) => window.clearTimeout(timer));
+            });
+            reminderTimers.clear();
+        }
+
+        async function api(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: { 'Content-Type': 'application/json', ...options.headers }
+            });
+            let data;
+            try {
+                data = await response.json();
+            } catch (error) {
+                throw new Error(t('apiInvalidJson', { status: response.status }));
+            }
+            if (!response.ok) {
+                throw new Error(data.error
+                    ? localizedError(data.error)
+                    : t('serverError', { status: response.status }));
+            }
+            return data;
+        }
+
+        function toggleAuthMode() {
+            setAuthMode(authMode === 'signup' ? 'login' : authMode === 'login' ? 'signup' : 'login');
+        }
+
+        function setAuthMode(mode, message = '') {
+            authMode = mode;
+            document.getElementById('signup-form').hidden = mode !== 'signup';
+            document.getElementById('login-form').hidden = mode !== 'login';
+            document.getElementById('reset-request-form').hidden = mode !== 'reset-request';
+            document.getElementById('reset-confirm-form').hidden = mode !== 'reset-confirm';
+            document.getElementById('forgot-password-button').hidden = mode !== 'login';
+            document.getElementById('reset-back-button').hidden = !mode.startsWith('reset-');
+            document.getElementById('auth-switch').hidden = mode.startsWith('reset-');
+            document.getElementById('auth-title').textContent = t({
+                signup: 'signupTitle',
+                login: 'loginTitle',
+                'reset-request': 'resetRequestTitle',
+                'reset-confirm': 'resetConfirmTitle'
+            }[mode]);
+            document.getElementById('auth-switch').textContent = t(
+                mode === 'signup' ? 'authSwitchSignup' : 'authSwitchLogin'
+            );
+            document.getElementById('auth-message').textContent = message;
+        }
+
+        function showPasswordReset() {
+            const loginEmail = document.getElementById('login-email').value.trim();
+            if (!loginEmail) {
+                document.getElementById('auth-message').textContent = t('forgotPasswordRequired');
+                return;
+            }
+            document.getElementById('reset-request-email').value = loginEmail;
+            setAuthMode('reset-request');
+        }
+
+        async function requestPasswordReset() {
+            const email = document.getElementById('reset-request-email').value.trim();
+            const message = document.getElementById('auth-message');
+            try {
+                const result = await api('/api/password-reset/request', {
+                    method: 'POST',
+                    body: JSON.stringify({ email })
+                });
+                resetEmail = email;
+                document.getElementById('reset-confirm-email').value = email;
+                setAuthMode('reset-confirm', t('otpSent'));
+            } catch (error) {
+                message.textContent = t('requestFailed', { error: error.message });
+            }
+        }
+
+        async function confirmPasswordReset() {
+            const otp = document.getElementById('reset-otp').value.trim();
+            const password = document.getElementById('reset-new-password').value;
+            const message = document.getElementById('auth-message');
+            try {
+                const result = await api('/api/password-reset/confirm', {
+                    method: 'POST',
+                    body: JSON.stringify({ email: resetEmail, otp, password })
+                });
+                document.getElementById('reset-confirm-form').reset();
+                document.getElementById('login-email').value = resetEmail;
+                resetEmail = '';
+                setAuthMode('login', t('resetSuccess', { message: t('passwordChanged') }));
+            } catch (error) {
+                message.textContent = t('requestFailed', { error: error.message });
+            }
+        }
+
+        async function submitAuth(mode) {
+            const form = document.getElementById(`${mode}-form`);
+            const formData = new FormData(form);
+            const authMessage = document.getElementById('auth-message');
+            const data = Object.fromEntries(formData.entries());
+            if (mode === 'signup') {
+                data.policy_accepted = formData.get('policy_accepted') === 'true';
+            }
+            if (mode === 'signup' && (!data.name.trim() || !data.email.trim() || !data.password)) {
+                authMessage.textContent = t('signupRequiredFields');
+                return;
+            }
+            if (mode === 'login' && (!data.email.trim() || !data.password)) {
+                authMessage.textContent = t('loginRequiredFields');
+                return;
+            }
+            try {
+                const result = await api(`/api/${mode}`, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                form.reset();
+                await showUser(result.user);
+            } catch (error) {
+                authMessage.textContent = t('requestFailed', { error: error.message });
+            }
+        }
+
+        async function logout() {
+            try {
+                await api('/api/logout', { method: 'POST', body: '{}' });
+                clearReminderTimers();
+                showUser(null);
+            } catch (error) {
+                document.getElementById('reminder-status').textContent =
+                    t('logoutFailed', { error: error.message });
+            }
+
+            async function deleteAccount() {
+                const password = document.getElementById('delete-account-password').value;
+                const status = document.getElementById('delete-account-status');
+                try {
+                    await api('/api/account/delete', {
+                        method: 'POST',
+                        body: JSON.stringify({ password })
+                    });
+                    document.getElementById('delete-account-form').reset();
+                    document.getElementById('account-panel').hidden = true;
+                    await showUser(null);
+                    setAuthMode('signup', t('accountDeleted'));
+                } catch (error) {
+                    status.textContent = t('deleteAccountFailed', { error: error.message });
+                }
+            }
+        }
+
+        async function showUser(user) {
+            const signedIn = Boolean(user);
+            document.getElementById('auth-container').hidden = signedIn;
+            document.getElementById('dashboard').hidden = !signedIn;
+            document.getElementById('account-actions').hidden = !signedIn;
+            document.querySelector('.dashboard-nav').hidden = false;
+            document.querySelector('.main-container').classList.remove('guest-mode');
+            document.getElementById('guest-login-button').hidden = true;
+            if (!signedIn) {
+                currentUserName = '';
+                clearReminderTimers();
+                return;
+            }
+            currentUserName = user.name;
+            document.getElementById('welcome-user').textContent =
+                t('welcomeUser', { name: user.name });
+            showDashboardSection('alarms');
+            await refreshDashboard();
+        }
+
+        async function initializeApp() {
+            try {
+                const result = await api('/api/session');
+                await showUser(result.user);
+            } catch (error) {
+                document.getElementById('auth-message').textContent =
+                    t('serverConnectError', { error: error.message });
+            }
+        }
+
+        async function refreshDashboard() {
+            try {
+                const [medicationData, historyData] = await Promise.all([
+                    api('/api/medications'),
+                    api('/api/history')
+                ]);
+                renderMedications(medicationData.medications);
+                renderHistory(historyData.history);
+                scheduleReminders(medicationData.medications);
+            } catch (error) {
+                document.getElementById('reminder-status').textContent =
+                    t('dashboardLoadError', { error: error.message });
+            }
+        }
+
+        function renderMedications(medications) {
+            const list = document.getElementById('medicine-list');
+            list.replaceChildren();
+            if (medications.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'empty-state';
+                empty.textContent = t('emptyMedicines');
+                list.append(empty);
+                return;
+            }
+
+            medications.forEach((medication) => {
+                const item = document.createElement('div');
+                item.className = 'medicine-item';
+                const details = document.createElement('div');
+                const name = document.createElement('strong');
+                name.textContent = medication.name;
+                const time = document.createElement('small');
+                time.textContent = t('everyDay', { time: medication.schedule_time });
+                details.append(name, time);
+
+                const actions = document.createElement('div');
+                actions.className = 'medicine-actions';
+                if (medication.taken_today) {
+                    const badge = document.createElement('span');
+                    badge.className = 'taken-badge';
+                    badge.textContent = t('medicineTakenBadge');
+                    actions.append(badge);
+                } else {
+                    const takenButton = document.createElement('button');
+                    takenButton.type = 'button';
+                    takenButton.textContent = t('markTaken');
+                    takenButton.addEventListener('click', () => markTaken(medication.id));
+                    actions.append(takenButton);
+                }
+
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'secondary';
+                deleteButton.textContent = t('removeFromSchedule');
+                deleteButton.addEventListener('click', () => removeMedication(medication.id));
+                actions.append(deleteButton);
+                item.append(details, actions);
+                list.append(item);
+            });
+        }
+
+        function renderHistory(history) {
+            const list = document.getElementById('history-list');
+            list.replaceChildren();
+            if (history.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'empty-state';
+                empty.textContent = t('emptyHistory');
+                list.append(empty);
+                return;
+            }
+
+            history.forEach((entry) => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                const details = document.createElement('div');
+                const name = document.createElement('strong');
+                const wasTaken = entry.status === 'taken';
+                name.textContent = t(wasTaken ? 'takenHistory' : 'missedHistory', {
+                    name: entry.medication_name
+                });
+                const takenAt = document.createElement('small');
+                const date = new Date(entry.taken_at);
+                takenAt.textContent = t('recordedAt', {
+                    date: entry.taken_date,
+                    action: t(wasTaken ? 'historyAction' : 'missedAction'),
+                    time: Number.isNaN(date.getTime())
+                        ? entry.taken_at
+                        : date.toLocaleString(t('dateLocale'))
+                });
+                details.append(name, takenAt);
+                item.append(details);
+                list.append(item);
+            });
+        }
+
+        async function setReminder() {
+            const name = document.getElementById('med-name').value.trim();
+            const time = document.getElementById('med-time').value;
+            const status = document.getElementById('reminder-status');
+
+            if (!name || !time) {
+                status.textContent = t('nameAndTimeRequired');
+                return;
+            }
+
+            if (!isValidReminderTime(time)) {
+                status.textContent = t('invalidTime');
+                return;
+            }
+
+            try {
+                const result = await api('/api/medications', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, time })
+                });
+                document.getElementById('medicine-form').reset();
+                status.textContent = t('medicineAdded', {
+                    name: result.medication.name,
+                    time: result.medication.schedule_time
+                });
+                enableReminderAudio();
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission().catch((error) => {
+                        console.error('Notification permission request failed:', error);
+                    });
+                }
+                await refreshDashboard();
+            } catch (error) {
+                status.textContent = t('addMedicineFailed', { error: error.message });
+            }
+        }
+
+        async function markTaken(medicationId) {
+            try {
+                await api(`/api/medications/${medicationId}/taken`, {
+                    method: 'POST',
+                    body: JSON.stringify({ date: localDateKey(new Date()) })
+                });
+                document.getElementById('reminder-status').textContent = t('historyMarked');
+                await refreshDashboard();
+            } catch (error) {
+                document.getElementById('reminder-status').textContent =
+                    t('saveDoseFailed', { error: error.message });
+            }
+        }
+
+        async function removeMedication(medicationId) {
+            if (!window.confirm(t('removeConfirm'))) return;
+            try {
+                await api(`/api/medications/${medicationId}`, { method: 'DELETE' });
+                await refreshDashboard();
+            } catch (error) {
+                document.getElementById('reminder-status').textContent =
+                    t('removeFailed', { error: error.message });
+            }
+        }
+
+        function scheduleReminders(medications) {
+            clearReminderTimers();
+            medications.forEach(armReminder);
+        }
+
+        function armReminder(reminder) {
+            const now = new Date();
+            const scheduledAt = scheduledTime(reminder.schedule_time, now);
+            const followUpAt = new Date(scheduledAt.getTime() + DOSE_FOLLOW_UP_DELAY_MS);
+            const missedAt = new Date(scheduledAt.getTime() + MISSED_DOSE_DELAY_MS);
+            const doseDate = localDateKey(scheduledAt);
+
+            if (reminder.taken_today) {
+                const tomorrow = new Date(scheduledAt);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                scheduleDoseOccurrence(reminder, tomorrow, localDateKey(tomorrow));
+                return;
+            }
+
+            if (scheduledAt > now) {
+                scheduleDoseOccurrence(reminder, scheduledAt, doseDate);
+                return;
+            }
+
+            if (now < missedAt) {
+                if (now < followUpAt) {
+                    scheduleDoseFollowUpReminder(reminder, followUpAt, doseDate);
+                } else {
+                    triggerDoseFollowUpReminder(reminder, doseDate);
+                }
+                scheduleMissedDoseReminder(reminder, missedAt, doseDate);
+            } else {
+                triggerMissedDoseReminder(reminder, doseDate);
+            }
+
+            const tomorrow = new Date(scheduledAt);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            scheduleDoseOccurrence(reminder, tomorrow, localDateKey(tomorrow));
+        }
+
+        function scheduledTime(time, day) {
+            const [hours, minutes] = time.split(':').map(Number);
+            const scheduledAt = new Date(day);
+            scheduledAt.setHours(hours, minutes, 0, 0);
+            return scheduledAt;
+        }
+
+        function localDateKey(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function addReminderTimer(medicationId, callback, delay) {
+            let timer;
+            timer = window.setTimeout(() => {
+                const medicationTimers = reminderTimers.get(medicationId) || [];
+                const remainingTimers = medicationTimers.filter((item) => item !== timer);
+                if (remainingTimers.length) reminderTimers.set(medicationId, remainingTimers);
+                else reminderTimers.delete(medicationId);
+                callback();
+            }, Math.max(0, delay));
+            const medicationTimers = reminderTimers.get(medicationId) || [];
+            medicationTimers.push(timer);
+            reminderTimers.set(medicationId, medicationTimers);
+        }
+
+        function scheduleDoseOccurrence(reminder, scheduledAt, doseDate) {
+            const now = Date.now();
+            const followUpAt = new Date(scheduledAt.getTime() + DOSE_FOLLOW_UP_DELAY_MS);
+            const missedAt = new Date(scheduledAt.getTime() + MISSED_DOSE_DELAY_MS);
+
+            addReminderTimer(reminder.id, () => {
+                ringReminder(reminder);
+                const tomorrow = new Date(scheduledAt);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                scheduleDoseOccurrence(reminder, tomorrow, localDateKey(tomorrow));
+            }, scheduledAt.getTime() - now);
+            scheduleDoseFollowUpReminder(reminder, followUpAt, doseDate);
+            scheduleMissedDoseReminder(reminder, missedAt, doseDate);
+        }
+
+        function scheduleDoseFollowUpReminder(reminder, followUpAt, doseDate) {
+            addReminderTimer(
+                reminder.id,
+                () => triggerDoseFollowUpReminder(reminder, doseDate),
+                followUpAt.getTime() - Date.now()
+            );
+        }
+
+        function scheduleMissedDoseReminder(reminder, missedAt, doseDate) {
+            addReminderTimer(
+                reminder.id,
+                () => triggerMissedDoseReminder(reminder, doseDate),
+                missedAt.getTime() - Date.now()
+            );
+        }
+
+        function hasMissedDoseAlert(medicationId, doseDate) {
+            const key = `${medicationId}:${doseDate}`;
+            if (missedDoseAlerts.has(key)) return true;
+            try {
+                if (localStorage.getItem(`medconnectMissedDose:${key}`) === 'sent') {
+                    missedDoseAlerts.add(key);
+                    return true;
+                }
+            } catch (error) {
+                console.error('Could not read missed-dose reminder state:', error);
+            }
+            return false;
+        }
+
+        function hasDoseReminderAlert(medicationId, doseDate) {
+            const key = `${medicationId}:${doseDate}`;
+            if (doseReminderAlerts.has(key)) return true;
+            try {
+                if (localStorage.getItem(`medconnectDoseReminder:${key}`) === 'sent') {
+                    doseReminderAlerts.add(key);
+                    return true;
+                }
+            } catch (error) {
+                console.error('Could not read dose reminder state:', error);
+            }
+            return false;
+        }
+
+        async function triggerDoseFollowUpReminder(reminder, doseDate) {
+            if (hasDoseReminderAlert(reminder.id, doseDate)) return;
+
+            try {
+                const result = await api('/api/medications');
+                const currentMedication = result.medications.find((item) => item.id === reminder.id);
+                if (!currentMedication || currentMedication.taken_today) return;
+
+                const key = `${reminder.id}:${doseDate}`;
+                doseReminderAlerts.add(key);
+                try {
+                    localStorage.setItem(`medconnectDoseReminder:${key}`, 'sent');
+                } catch (error) {
+                    console.error('Could not save dose reminder state:', error);
+                }
+                ringReminder(reminder, 'follow-up', doseDate);
+            } catch (error) {
+                console.error('Could not check whether medication was taken:', error);
+                document.getElementById('reminder-status').textContent =
+                    t('missedCheckFailed', { error: error.message });
+            }
+        }
+
+        async function triggerMissedDoseReminder(reminder, doseDate) {
+            if (hasMissedDoseAlert(reminder.id, doseDate)) return;
+
+            try {
+                const result = await api('/api/medications');
+                const currentMedication = result.medications.find((item) => item.id === reminder.id);
+                if (!currentMedication || currentMedication.taken_today) return;
+
+                const key = `${reminder.id}:${doseDate}`;
+                await api(`/api/medications/${reminder.id}/missed`, {
+                    method: 'POST',
+                    body: JSON.stringify({ date: doseDate })
+                });
+                missedDoseAlerts.add(key);
+                try {
+                    localStorage.setItem(`medconnectMissedDose:${key}`, 'sent');
+                } catch (error) {
+                    console.error('Could not save missed-dose reminder state:', error);
+                }
+                ringReminder(reminder, 'missed', doseDate);
+                await refreshDashboard();
+            } catch (error) {
+                console.error('Could not check whether medication was taken:', error);
+                document.getElementById('reminder-status').textContent =
+                    t('missedCheckFailed', { error: error.message });
+            }
+        }
+
+        function isValidReminderTime(time) {
+            return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
+        }
+
+        function enableReminderAudio() {
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextClass) return;
+                if (!reminderAudioContext || reminderAudioContext.state === 'closed') {
+                    reminderAudioContext = new AudioContextClass();
+                }
+                if (reminderAudioContext.state === 'suspended') {
+                    reminderAudioContext.resume().catch((error) => {
+                        console.error('Could not enable reminder audio:', error);
+                    });
+                }
+            } catch (error) {
+                console.error('Could not initialize reminder audio:', error);
+            }
+        }
+
+        function ringReminder(reminder, reminderType = 'scheduled', doseDate = localDateKey(new Date())) {
+            const missed = reminderType === 'missed';
+            const followUp = reminderType === 'follow-up';
+            if ('Notification' in window && Notification.permission === 'granted') {
+                try {
+                    new Notification(
+                        missed
+                            ? t('missedNotificationTitle')
+                            : followUp
+                                ? t('followUpNotificationTitle')
+                                : t('reminderNotificationTitle'),
+                        {
+                            body: missed
+                                ? t('missedNotification', { name: reminder.name })
+                                : followUp
+                                    ? t('followUpNotification', { name: reminder.name })
+                                    : t('reminderNotification', { name: reminder.name }),
+                            tag: missed
+                                ? `medconnect-missed-${reminder.id}-${doseDate}`
+                                : followUp
+                                    ? `medconnect-follow-up-${reminder.id}-${doseDate}`
+                                    : `medconnect-${reminder.id}`
+                        }
+                    );
+                } catch (error) {
+                    console.error('Could not show medication notification:', error);
+                }
+            }
+
+            const status = document.getElementById('reminder-status');
+            const reminderText = missed
+                ? t('missedReminder', { name: reminder.name })
+                : followUp
+                    ? t('followUpReminder', { name: reminder.name })
+                    : t('doseReminder', { name: reminder.name });
+            status.textContent = reminderText;
+            if (!reminderAudioContext || reminderAudioContext.state === 'closed') {
+                return;
+            }
+
+            reminderAudioContext.resume().then(() => {
+                const now = reminderAudioContext.currentTime;
+                const oscillator = reminderAudioContext.createOscillator();
+                const gain = reminderAudioContext.createGain();
+                oscillator.connect(gain);
+                gain.connect(reminderAudioContext.destination);
+                oscillator.frequency.value = missed ? 660 : followUp ? 520 : 880;
+                if (followUp) oscillator.type = 'triangle';
+                gain.gain.setValueAtTime(0, now);
+                const pulseCount = missed ? 5 : followUp ? 4 : 3;
+                const pulseInterval = followUp ? 0.65 : 0.9;
+                for (let pulse = 0; pulse < pulseCount; pulse++) {
+                    const start = now + pulse * pulseInterval;
+                    gain.gain.setValueAtTime(0.35, start);
+                    gain.gain.setValueAtTime(0, start + 0.55);
+                }
+                oscillator.start(now);
+                oscillator.stop(now + (missed ? 4.2 : followUp ? 3.2 : 2.4));
+            }).catch((error) => {
+                console.error('Could not play reminder sound:', error);
+                status.textContent = reminderText;
+            });
+        }
+
+        initializeApp();
+
+        async function askAI() {
+            const question = document.getElementById('user-question').value.trim();
+            const language = document.getElementById('assistant-language').value;
+            const outputDiv = document.getElementById('chat-output');
+            const askButton = document.getElementById('ask-button');
+            if (!question) {
+                outputDiv.textContent = t('askQuestion');
+                return;
+            }
+
+            askButton.disabled = true;
+            askButton.textContent = t('loadingTips');
+            outputDiv.textContent = t('outputLoading');
+            
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, language })
+                });
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (error) {
+                    throw new Error(t('apiInvalidJson', { status: response.status }));
+                }
+
+                if (!response.ok) {
+                    outputDiv.textContent = typeof data.answer === 'string'
+                        ? localizedError(data.answer)
+                        : t('serverError', { status: response.status });
+                    return;
+                }
+
+                outputDiv.textContent = typeof data.answer === 'string' && data.answer.trim()
+                    ? data.answer
+                    : t('missingServerAnswer');
+            } catch (error) {
+                console.error('Health assistant request failed:', error);
+                outputDiv.textContent = error instanceof TypeError
+                    ? t('assistantConnectionError')
+                    : t('requestFailed', { error: error.message });
+            } finally {
+                askButton.disabled = false;
+                askButton.textContent = t('healthTips');
+            }
+        }
+    </script>
+
+</body>
+</html>

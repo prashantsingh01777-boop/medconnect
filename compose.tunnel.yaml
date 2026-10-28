@@ -1,0 +1,47 @@
+name: medconnect-tunnel
+
+services:
+  app:
+    image: medconnect-tunnel-app:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      MEDCONNECT_ENV: production
+      MEDCONNECT_SECRET_KEY: ${MEDCONNECT_SECRET_KEY:?Set MEDCONNECT_SECRET_KEY in .env.docker-tunnel}
+      MEDCONNECT_DATABASE: /data/medconnect.db
+      MEDCONNECT_COOKIE_SECURE: "true"
+      MEDCONNECT_TRUSTED_PROXY: "true"
+      MEDCONNECT_SUPPORT_EMAIL: ${MEDCONNECT_SUPPORT_EMAIL:-}
+      MEDCONNECT_GMAIL_ADDRESS: ${MEDCONNECT_GMAIL_ADDRESS:-}
+      MEDCONNECT_GMAIL_APP_PASSWORD: ${MEDCONNECT_GMAIL_APP_PASSWORD:-}
+      HOST: 0.0.0.0
+      PORT: "8000"
+    ports:
+      - "127.0.0.1:5103:8000"
+    volumes:
+      - medconnect-tunnel-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  medconnect-tunnel-data:
+    external: true
+    name: medconnect-tunnel_medconnect-tunnel-data

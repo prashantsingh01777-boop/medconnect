@@ -1,0 +1,60 @@
+services:
+  app:
+    build:
+      context: .
+    environment:
+      MEDCONNECT_ENV: production
+      MEDCONNECT_SECRET_KEY: ${MEDCONNECT_SECRET_KEY:?Set MEDCONNECT_SECRET_KEY in .env}
+      MEDCONNECT_DATABASE: /data/medconnect.db
+      MEDCONNECT_COOKIE_SECURE: "true"
+      MEDCONNECT_TRUSTED_PROXY: "true"
+      MEDCONNECT_SUPPORT_EMAIL: ${MEDCONNECT_SUPPORT_EMAIL:?Set MEDCONNECT_SUPPORT_EMAIL in .env}
+      MEDCONNECT_GMAIL_ADDRESS: ${MEDCONNECT_GMAIL_ADDRESS:-}
+      MEDCONNECT_GMAIL_APP_PASSWORD: ${MEDCONNECT_GMAIL_APP_PASSWORD:-}
+      HOST: 0.0.0.0
+      PORT: "8000"
+    expose:
+      - "8000"
+    volumes:
+      - medconnect-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  caddy:
+    image: caddy:2
+    environment:
+      MEDCONNECT_DOMAIN: ${MEDCONNECT_DOMAIN:?Set MEDCONNECT_DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env}
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+volumes:
+  medconnect-data:
+  caddy-data:
+  caddy-config:
