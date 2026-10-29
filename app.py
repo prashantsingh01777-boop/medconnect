@@ -1,5 +1,7 @@
+import base64
 import hashlib
 import hmac
+import json
 import logging
 import os
 import re
@@ -7,11 +9,16 @@ import secrets
 import smtplib
 import sqlite3
 import ssl
+import threading
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from contextlib import closing
 from datetime import date, datetime, timedelta, timezone
 from email.message import EmailMessage
 from functools import wraps
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from flask import Flask, g, jsonify, render_template, request, send_from_directory, session
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -40,6 +47,11 @@ app.config['MAX_CONTENT_LENGTH'] = 64 * 1024
 if os.environ.get('MEDCONNECT_TRUSTED_PROXY', '').strip().lower() == 'true':
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 logger = logging.getLogger(__name__)
+CAREGIVER_ALERT_DELAY_MINUTES = 15
+CAREGIVER_CONTACT_LIMIT = 5
+CAREGIVER_DELIVERY_CHANNELS = ('sms', 'whatsapp')
+CAREGIVER_RETRY_DELAYS_SECONDS = (60, 300)
+caregiver_worker_lock = threading.Lock()
 
 
 @app.after_request
@@ -47,7 +59,7 @@ def set_security_headers(response):
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
     response.headers.setdefault('X-Frame-Options', 'DENY')
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
-    response.headers.setdefault('Permissions-Policy', 'camera=(), geolocation=(), microphone=(self)')
+    response.headers.setdefault('Permissions-Policy', 'camera=(self), geolocation=(), microphone=(self)')
     if app.config['SESSION_COOKIE_SECURE']:
         response.headers.setdefault(
             'Strict-Transport-Security', 'max-age=31536000; includeSubDomains'
@@ -222,7 +234,8 @@ def initialize_db():
                     name TEXT NOT NULL,
                     email TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL,
-                    policy_accepted_at TEXT
+                    policy_accepted_at TEXT,
+                    time_zone TEXT NOT NULL DEFAULT 'Asia/Kolkata'
                 );
                 CREATE TABLE IF NOT EXISTS medications (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -258,6 +271,35 @@ def initialize_db():
                     request_count INTEGER NOT NULL,
                     PRIMARY KEY (scope, client_hash, window_start)
                 );
+                CREATE TABLE IF NOT EXISTS caregiver_contacts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    name TEXT NOT NULL,
+                    phone_e164 TEXT NOT NULL,
+                    consent_at TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    UNIQUE(user_id, phone_e164)
+                );
+                CREATE TABLE IF NOT EXISTS caregiver_alerts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    medication_id INTEGER NOT NULL REFERENCES medications(id) ON DELETE CASCADE,
+                    dose_date TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE(medication_id, dose_date)
+                );
+                CREATE TABLE IF NOT EXISTS caregiver_alert_deliveries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    alert_id INTEGER NOT NULL REFERENCES caregiver_alerts(id) ON DELETE CASCADE,
+                    caregiver_id INTEGER NOT NULL REFERENCES caregiver_contacts(id) ON DELETE CASCADE,
+                    channel TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    next_attempt_at TEXT,
+                    delivered_at TEXT,
+                    UNIQUE(alert_id, caregiver_id, channel)
+                );
                 '''
             )
             user_columns = {
@@ -265,6 +307,10 @@ def initialize_db():
             }
             if 'policy_accepted_at' not in user_columns:
                 database.execute('ALTER TABLE users ADD COLUMN policy_accepted_at TEXT')
+            if 'time_zone' not in user_columns:
+                database.execute(
+                    "ALTER TABLE users ADD COLUMN time_zone TEXT NOT NULL DEFAULT 'Asia/Kolkata'"
+                )
             database.execute(
                 "UPDATE password_reset_codes SET request_ip = '' WHERE request_ip != ''"
             )
@@ -530,6 +576,12 @@ def delete_account():
 
     database.execute('BEGIN IMMEDIATE')
     database.execute('DELETE FROM dose_history WHERE user_id = ?', (user_id,))
+    database.execute(
+        'DELETE FROM caregiver_alerts WHERE medication_id IN '
+        '(SELECT id FROM medications WHERE user_id = ?)',
+        (user_id,),
+    )
+    database.execute('DELETE FROM caregiver_contacts WHERE user_id = ?', (user_id,))
     database.execute('DELETE FROM medications WHERE user_id = ?', (user_id,))
     database.execute(
         'DELETE FROM password_reset_codes WHERE user_id = ? OR email = ?',
@@ -768,6 +820,24 @@ def mark_medication_taken(medication_id):
                 medication['schedule_time'], timestamp, taken_date,
             ),
         )
+    database.execute(
+        '''
+        UPDATE caregiver_alert_deliveries
+        SET status = 'cancelled', next_attempt_at = NULL
+        WHERE alert_id IN (
+            SELECT id FROM caregiver_alerts WHERE medication_id = ? AND dose_date = ?
+        ) AND status IN ('pending', 'sending')
+        ''',
+        (medication_id, taken_date),
+    )
+    database.execute(
+        '''
+        UPDATE caregiver_alerts
+        SET status = 'cancelled', updated_at = ?
+        WHERE medication_id = ? AND dose_date = ? AND status = 'pending'
+        ''',
+        (timestamp, medication_id, taken_date),
+    )
     database.commit()
     return jsonify({'ok': True})
 
@@ -835,6 +905,7 @@ def medication_history():
     first_day = (today - timedelta(days=6)).isoformat()
     database = get_db()
     database.execute('DELETE FROM dose_history WHERE taken_date < ?', (first_day,))
+    database.execute('DELETE FROM caregiver_alerts WHERE dose_date < ?', (first_day,))
     database.execute(
         'DELETE FROM password_reset_codes WHERE expires_at < ?', (utc_now().isoformat(),)
     )
@@ -849,6 +920,454 @@ def medication_history():
         (session['user_id'], first_day, today.isoformat()),
     ).fetchall()
     return jsonify({'history': [dict(row) for row in rows]})
+
+
+def caregiver_notifications_configured():
+    required_settings = (
+        'TWILIO_ACCOUNT_SID',
+        'TWILIO_AUTH_TOKEN',
+        'TWILIO_SMS_FROM',
+        'TWILIO_WHATSAPP_FROM',
+        'TWILIO_WHATSAPP_CONTENT_SID',
+    )
+    return all(os.environ.get(setting, '').strip() for setting in required_settings)
+
+
+def send_twilio_caregiver_alert(phone_e164, channel, user_name, schedule_time):
+    account_sid = os.environ['TWILIO_ACCOUNT_SID'].strip()
+    auth_token = os.environ['TWILIO_AUTH_TOKEN'].strip()
+    sender = os.environ[
+        'TWILIO_SMS_FROM' if channel == 'sms' else 'TWILIO_WHATSAPP_FROM'
+    ].strip()
+    recipient = phone_e164 if channel == 'sms' else f'whatsapp:{phone_e164}'
+    message = (
+        f'MedConnect: {user_name} ki dawa ki {schedule_time} baje wali dose ko '
+        f'{CAREGIVER_ALERT_DELAY_MINUTES} minute baad bhi app mein li hui mark nahi kiya gaya. '
+        'Kripya unse sampark karke pushti karein. Yeh emergency monitoring nahi hai.'
+    )
+    payload = {
+        'To': recipient,
+        'From': sender if channel == 'sms' or sender.startswith('whatsapp:') else f'whatsapp:{sender}',
+    }
+    if channel == 'whatsapp':
+        payload['ContentSid'] = os.environ['TWILIO_WHATSAPP_CONTENT_SID'].strip()
+        payload['ContentVariables'] = json.dumps({
+            '1': user_name,
+            '2': schedule_time,
+            '3': str(CAREGIVER_ALERT_DELAY_MINUTES),
+        })
+    else:
+        payload['Body'] = message
+
+    url = f'https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json'
+    authorization = base64.b64encode(f'{account_sid}:{auth_token}'.encode()).decode()
+    request_message = urllib.request.Request(
+        url,
+        data=urllib.parse.urlencode(payload).encode(),
+        headers={
+            'Authorization': f'Basic {authorization}',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        method='POST',
+    )
+    with urllib.request.urlopen(request_message, timeout=15) as response:
+        provider_result = json.loads(response.read())
+    if not isinstance(provider_result, dict) or not provider_result.get('sid'):
+        raise ValueError('Messaging provider did not return a message ID')
+
+
+def update_caregiver_alert_status(database, alert_id, timestamp):
+    deliveries = database.execute(
+        '''
+        SELECT status, COUNT(*) AS count
+        FROM caregiver_alert_deliveries
+        WHERE alert_id = ?
+        GROUP BY status
+        ''',
+        (alert_id,),
+    ).fetchall()
+    counts = {row['status']: row['count'] for row in deliveries}
+    if counts.get('pending', 0) or counts.get('sending', 0):
+        status = 'pending'
+    elif counts.get('sent', 0):
+        status = 'sent'
+    elif counts.get('failed', 0):
+        status = 'failed'
+    else:
+        status = 'cancelled'
+    database.execute(
+        'UPDATE caregiver_alerts SET status = ?, updated_at = ? WHERE id = ?',
+        (status, timestamp, alert_id),
+    )
+
+
+def process_due_caregiver_alerts(now=None):
+    if not caregiver_notifications_configured() or not caregiver_worker_lock.acquire(False):
+        return 0
+
+    sent_count = 0
+    try:
+        current_time = now or utc_now()
+        if current_time.tzinfo is None:
+            current_time = current_time.replace(tzinfo=timezone.utc)
+        current_time = current_time.astimezone(timezone.utc)
+        timestamp = current_time.isoformat(timespec='seconds')
+
+        with app.app_context():
+            database = get_db()
+            users = database.execute(
+                '''
+                SELECT DISTINCT u.id, u.name, u.time_zone
+                FROM users AS u
+                JOIN medications AS m ON m.user_id = u.id
+                JOIN caregiver_contacts AS c ON c.user_id = u.id
+                '''
+            ).fetchall()
+            for user in users:
+                try:
+                    user_zone = ZoneInfo(user['time_zone'])
+                except (TypeError, ZoneInfoNotFoundError):
+                    logger.error('Caregiver alerts skipped for an invalid account time zone')
+                    continue
+                local_now = current_time.astimezone(user_zone)
+                dose_date = local_now.date().isoformat()
+                contacts = database.execute(
+                    'SELECT id FROM caregiver_contacts WHERE user_id = ?',
+                    (user['id'],),
+                ).fetchall()
+                medications = database.execute(
+                    '''
+                    SELECT m.id, m.schedule_time
+                    FROM medications AS m
+                    WHERE m.user_id = ?
+                      AND NOT EXISTS (
+                          SELECT 1 FROM dose_history AS h
+                          WHERE h.medication_id = m.id
+                            AND h.user_id = m.user_id
+                            AND h.taken_date = ?
+                            AND h.status = 'taken'
+                      )
+                    ''',
+                    (user['id'], dose_date),
+                ).fetchall()
+                for medication in medications:
+                    scheduled_at = datetime.combine(
+                        local_now.date(),
+                        datetime.strptime(medication['schedule_time'], '%H:%M').time(),
+                        tzinfo=user_zone,
+                    )
+                    alert_due_at = scheduled_at + timedelta(
+                        minutes=CAREGIVER_ALERT_DELAY_MINUTES
+                    )
+                    if alert_due_at > local_now:
+                        continue
+
+                    database.execute('BEGIN IMMEDIATE')
+                    dose_taken = database.execute(
+                        '''
+                        SELECT 1 FROM dose_history
+                        WHERE user_id = ? AND medication_id = ? AND taken_date = ?
+                          AND status = 'taken'
+                        LIMIT 1
+                        ''',
+                        (user['id'], medication['id'], dose_date),
+                    ).fetchone()
+                    if dose_taken:
+                        database.commit()
+                        continue
+
+                    database.execute(
+                        '''
+                        INSERT OR IGNORE INTO caregiver_alerts(
+                            medication_id, dose_date, status, created_at, updated_at
+                        ) VALUES (?, ?, 'pending', ?, ?)
+                        ''',
+                        (medication['id'], dose_date, timestamp, timestamp),
+                    )
+                    alert = database.execute(
+                        '''
+                        SELECT id, status FROM caregiver_alerts
+                        WHERE medication_id = ? AND dose_date = ?
+                        ''',
+                        (medication['id'], dose_date),
+                    ).fetchone()
+                    if alert and alert['status'] == 'pending':
+                        for contact in contacts:
+                            for channel in CAREGIVER_DELIVERY_CHANNELS:
+                                database.execute(
+                                    '''
+                                    INSERT OR IGNORE INTO caregiver_alert_deliveries(
+                                        alert_id, caregiver_id, channel, status
+                                    ) VALUES (?, ?, ?, 'pending')
+                                    ''',
+                                    (alert['id'], contact['id'], channel),
+                                )
+                    database.commit()
+
+            due_deliveries = database.execute(
+                '''
+                SELECT d.id, d.alert_id, d.caregiver_id, d.channel, d.status,
+                       d.attempts, c.phone_e164, u.name AS user_name,
+                       m.schedule_time, a.dose_date, u.id AS user_id,
+                       m.id AS medication_id
+                FROM caregiver_alert_deliveries AS d
+                JOIN caregiver_alerts AS a ON a.id = d.alert_id
+                JOIN caregiver_contacts AS c ON c.id = d.caregiver_id
+                JOIN medications AS m ON m.id = a.medication_id
+                JOIN users AS u ON u.id = m.user_id
+                WHERE a.status = 'pending'
+                  AND d.attempts < 3
+                  AND (
+                      (d.status = 'pending' AND
+                       (d.next_attempt_at IS NULL OR d.next_attempt_at <= ?))
+                      OR
+                      (d.status = 'sending' AND d.next_attempt_at <= ?)
+                  )
+                ORDER BY a.created_at, d.id
+                LIMIT 50
+                ''',
+                (timestamp, timestamp),
+            ).fetchall()
+
+            for delivery in due_deliveries:
+                database.execute('BEGIN IMMEDIATE')
+                claim = database.execute(
+                    '''
+                    UPDATE caregiver_alert_deliveries
+                    SET status = 'sending', attempts = attempts + 1,
+                        next_attempt_at = ?
+                    WHERE id = ? AND attempts < 3
+                      AND (
+                          (status = 'pending' AND
+                           (next_attempt_at IS NULL OR next_attempt_at <= ?))
+                          OR
+                          (status = 'sending' AND next_attempt_at <= ?)
+                      )
+                    ''',
+                    (
+                        (current_time + timedelta(minutes=5)).isoformat(timespec='seconds'),
+                        delivery['id'], timestamp, timestamp,
+                    ),
+                )
+                database.commit()
+                if claim.rowcount == 0:
+                    continue
+
+                taken = database.execute(
+                    '''
+                    SELECT 1 FROM dose_history
+                    WHERE user_id = ? AND medication_id = ? AND taken_date = ?
+                      AND status = 'taken'
+                    LIMIT 1
+                    ''',
+                    (
+                        delivery['user_id'], delivery['medication_id'],
+                        delivery['dose_date'],
+                    ),
+                ).fetchone()
+                if taken:
+                    database.execute(
+                        '''
+                        UPDATE caregiver_alert_deliveries
+                        SET status = 'cancelled', next_attempt_at = NULL
+                        WHERE id = ? AND status = 'sending'
+                        ''',
+                        (delivery['id'],),
+                    )
+                    update_caregiver_alert_status(database, delivery['alert_id'], timestamp)
+                    database.commit()
+                    continue
+
+                try:
+                    send_twilio_caregiver_alert(
+                        delivery['phone_e164'],
+                        delivery['channel'],
+                        delivery['user_name'],
+                        delivery['schedule_time'],
+                    )
+                except urllib.error.HTTPError as error:
+                    logger.error(
+                        'Caregiver notification delivery failed (channel=%s, HTTP status=%s)',
+                        delivery['channel'], error.code,
+                    )
+                except (OSError, urllib.error.URLError, ValueError, json.JSONDecodeError) as error:
+                    logger.error(
+                        'Caregiver notification delivery failed (channel=%s, error=%s)',
+                        delivery['channel'], type(error).__name__,
+                    )
+                else:
+                    database.execute(
+                        '''
+                        UPDATE caregiver_alert_deliveries
+                        SET status = 'sent', delivered_at = ?, next_attempt_at = NULL
+                        WHERE id = ? AND status = 'sending'
+                        ''',
+                        (utc_now().isoformat(timespec='seconds'), delivery['id']),
+                    )
+                    update_caregiver_alert_status(
+                        database, delivery['alert_id'],
+                        utc_now().isoformat(timespec='seconds'),
+                    )
+                    database.commit()
+                    sent_count += 1
+                    continue
+
+                attempts = delivery['attempts'] + 1
+                if attempts < 3:
+                    retry_at = utc_now() + timedelta(
+                        seconds=CAREGIVER_RETRY_DELAYS_SECONDS[attempts - 1]
+                    )
+                    database.execute(
+                        '''
+                        UPDATE caregiver_alert_deliveries
+                        SET status = 'pending', next_attempt_at = ?
+                        WHERE id = ? AND status = 'sending'
+                        ''',
+                        (retry_at.isoformat(timespec='seconds'), delivery['id']),
+                    )
+                else:
+                    database.execute(
+                        '''
+                        UPDATE caregiver_alert_deliveries
+                        SET status = 'failed', next_attempt_at = NULL
+                        WHERE id = ? AND status = 'sending'
+                        ''',
+                        (delivery['id'],),
+                    )
+                update_caregiver_alert_status(
+                    database, delivery['alert_id'],
+                    utc_now().isoformat(timespec='seconds'),
+                )
+                database.commit()
+        return sent_count
+    finally:
+        caregiver_worker_lock.release()
+
+
+def caregiver_alert_worker():
+    while True:
+        try:
+            process_due_caregiver_alerts()
+        except sqlite3.Error:
+            logger.exception('Caregiver alert worker could not access the database')
+        time.sleep(30)
+
+
+def start_caregiver_alert_worker():
+    worker = threading.Thread(
+        target=caregiver_alert_worker,
+        name='medconnect-caregiver-alerts',
+        daemon=True,
+    )
+    worker.start()
+
+
+@app.get('/api/caregivers')
+@login_required
+def list_caregivers():
+    rows = get_db().execute(
+        '''
+        SELECT id, name, phone_e164, consent_at
+        FROM caregiver_contacts
+        WHERE user_id = ?
+        ORDER BY id
+        ''',
+        (session['user_id'],),
+    ).fetchall()
+    return jsonify({
+        'caregivers': [dict(row) for row in rows],
+        'limit': CAREGIVER_CONTACT_LIMIT,
+        'delay_minutes': CAREGIVER_ALERT_DELAY_MINUTES,
+        'channels': list(CAREGIVER_DELIVERY_CHANNELS),
+        'notifications_configured': caregiver_notifications_configured(),
+    })
+
+
+@app.post('/api/caregivers')
+@rate_limited('caregiver-add', 10, 3600)
+@login_required
+def add_caregiver():
+    data, error = request_data()
+    if error:
+        return error
+    name = data.get('name', '').strip() if isinstance(data.get('name'), str) else ''
+    phone = data.get('phone', '').strip() if isinstance(data.get('phone'), str) else ''
+    if not name or len(name) > 100 or not re.fullmatch(r'\+[1-9]\d{7,14}', phone):
+        return jsonify({'error': 'Caregiver ka naam aur sahi international phone number bharein.'}), 400
+    if data.get('consent_confirmed') is not True:
+        return jsonify({'error': 'Dono channels par alert bhejne se pehle caregiver ki sahmati zaroori hai.'}), 400
+
+    database = get_db()
+    database.execute('BEGIN IMMEDIATE')
+    existing = database.execute(
+        'SELECT id FROM caregiver_contacts WHERE user_id = ? AND phone_e164 = ?',
+        (session['user_id'], phone),
+    ).fetchone()
+    if existing:
+        database.commit()
+        return jsonify({'error': 'Yeh caregiver number pehle se joda hua hai.'}), 409
+    count = database.execute(
+        'SELECT COUNT(*) FROM caregiver_contacts WHERE user_id = ?',
+        (session['user_id'],),
+    ).fetchone()[0]
+    if count >= CAREGIVER_CONTACT_LIMIT:
+        database.commit()
+        return jsonify({'error': 'Caregiver numbers ki maximum limit poori ho gayi hai.'}), 400
+
+    timestamp = utc_now().isoformat(timespec='seconds')
+    cursor = database.execute(
+        '''
+        INSERT INTO caregiver_contacts(user_id, name, phone_e164, consent_at, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        ''',
+        (session['user_id'], name, phone, timestamp, timestamp),
+    )
+    database.commit()
+    return jsonify({
+        'caregiver': {
+            'id': cursor.lastrowid,
+            'name': name,
+            'phone_e164': phone,
+            'consent_at': timestamp,
+        },
+        'notifications_configured': caregiver_notifications_configured(),
+    }), 201
+
+
+@app.delete('/api/caregivers/<int:caregiver_id>')
+@login_required
+def delete_caregiver(caregiver_id):
+    database = get_db()
+    cursor = database.execute(
+        'DELETE FROM caregiver_contacts WHERE id = ? AND user_id = ?',
+        (caregiver_id, session['user_id']),
+    )
+    database.commit()
+    if cursor.rowcount == 0:
+        return jsonify({'error': 'Yeh caregiver nahi mila.'}), 404
+    return jsonify({'ok': True})
+
+
+@app.put('/api/caregivers/settings')
+@login_required
+def update_caregiver_settings():
+    data, error = request_data()
+    if error:
+        return error
+    time_zone = data.get('time_zone', '')
+    if not isinstance(time_zone, str) or len(time_zone) > 64:
+        return jsonify({'error': 'Phone ka time zone sahi nahi hai.'}), 400
+    try:
+        ZoneInfo(time_zone)
+    except (ValueError, ZoneInfoNotFoundError):
+        return jsonify({'error': 'Phone ka time zone sahi nahi hai.'}), 400
+
+    get_db().execute(
+        'UPDATE users SET time_zone = ? WHERE id = ?',
+        (time_zone, session['user_id']),
+    )
+    get_db().commit()
+    return jsonify({'ok': True})
 
 
 @app.post('/ask')
@@ -937,6 +1456,7 @@ initialize_db()
 if __name__ == '__main__':
     from waitress import serve
 
+    start_caregiver_alert_worker()
     serve(
         app,
         host=os.environ.get('HOST', '0.0.0.0'),

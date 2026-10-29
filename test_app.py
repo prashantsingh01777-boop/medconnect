@@ -1,9 +1,9 @@
 import os
-import sqlite3
 import tempfile
 import unittest
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
+from urllib.parse import parse_qs
 from unittest.mock import patch
 
 import app as medconnect
@@ -34,6 +34,16 @@ class ProductionReadinessTests(unittest.TestCase):
             },
         )
 
+    def add_caregiver(self, phone='+919876543210', name='Family member'):
+        return self.client.post(
+            '/api/caregivers',
+            json={
+                'name': name,
+                'phone': phone,
+                'consent_confirmed': True,
+            },
+        )
+
     def test_policies_health_check_and_security_headers(self):
         privacy = self.client.get('/privacy')
         terms = self.client.get('/terms')
@@ -46,6 +56,10 @@ class ProductionReadinessTests(unittest.TestCase):
         self.assertEqual(health.get_json(), {'status': 'ok'})
         self.assertEqual(health.headers['X-Content-Type-Options'], 'nosniff')
         self.assertEqual(health.headers['X-Frame-Options'], 'DENY')
+        self.assertEqual(
+            health.headers['Permissions-Policy'],
+            'camera=(self), geolocation=(), microphone=(self)',
+        )
 
     def test_signup_requires_policy_acceptance_and_records_timestamp(self):
         response = self.client.post(
@@ -69,6 +83,7 @@ class ProductionReadinessTests(unittest.TestCase):
 
     def test_account_delete_requires_password_and_removes_user_data(self):
         self.assertEqual(self.signup().status_code, 201)
+        self.assertEqual(self.add_caregiver().status_code, 201)
         medication = self.client.post(
             '/api/medications',
             json={'name': 'Test medicine', 'time': '09:00'},
@@ -101,6 +116,7 @@ class ProductionReadinessTests(unittest.TestCase):
             self.assertEqual(database.execute('SELECT COUNT(*) FROM users').fetchone()[0], 0)
             self.assertEqual(database.execute('SELECT COUNT(*) FROM medications').fetchone()[0], 0)
             self.assertEqual(database.execute('SELECT COUNT(*) FROM dose_history').fetchone()[0], 0)
+            self.assertEqual(database.execute('SELECT COUNT(*) FROM caregiver_contacts').fetchone()[0], 0)
 
     def test_password_reset_sends_otp_and_accepts_it(self):
         self.assertEqual(self.signup('person@gmail.com').status_code, 201)
@@ -203,6 +219,186 @@ class ProductionReadinessTests(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_caregiver_contacts_require_login_consent_and_international_number(self):
+        self.assertEqual(self.client.get('/api/caregivers').status_code, 401)
+        self.assertEqual(self.signup().status_code, 201)
+        missing_consent = self.client.post(
+            '/api/caregivers',
+            json={
+                'name': 'Family member',
+                'phone': '+919876543210',
+                'consent_confirmed': False,
+            },
+        )
+        self.assertEqual(missing_consent.status_code, 400)
+        invalid_phone = self.client.post(
+            '/api/caregivers',
+            json={
+                'name': 'Family member',
+                'phone': '9876543210',
+                'consent_confirmed': True,
+            },
+        )
+        self.assertEqual(invalid_phone.status_code, 400)
+
+        added = self.add_caregiver()
+        self.assertEqual(added.status_code, 201)
+        self.assertFalse(added.get_json()['notifications_configured'])
+        listing = self.client.get('/api/caregivers').get_json()
+        self.assertEqual(len(listing['caregivers']), 1)
+        self.assertEqual(listing['caregivers'][0]['phone_e164'], '+919876543210')
+        self.assertEqual(listing['delay_minutes'], 15)
+        self.assertEqual(listing['channels'], ['sms', 'whatsapp'])
+        self.assertEqual(
+            self.client.delete(
+                f"/api/caregivers/{added.get_json()['caregiver']['id']}"
+            ).status_code,
+            200,
+        )
+
+    def test_caregiver_timezone_must_be_a_valid_iana_zone(self):
+        self.assertEqual(self.signup().status_code, 201)
+        updated = self.client.put(
+            '/api/caregivers/settings',
+            json={'time_zone': 'America/Los_Angeles'},
+        )
+        invalid = self.client.put(
+            '/api/caregivers/settings',
+            json={'time_zone': 'not/a-real-zone'},
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(invalid.status_code, 400)
+        with medconnect.app.app_context():
+            time_zone = medconnect.get_db().execute(
+                'SELECT time_zone FROM users WHERE email = ?',
+                ('person@example.com',),
+            ).fetchone()['time_zone']
+        self.assertEqual(time_zone, 'America/Los_Angeles')
+
+    def test_due_caregiver_alerts_send_both_channels_once_per_contact(self):
+        self.assertEqual(self.signup().status_code, 201)
+        medication = self.client.post(
+            '/api/medications',
+            json={'name': 'Private medicine', 'time': '09:00'},
+        ).get_json()['medication']
+        self.assertEqual(self.add_caregiver().status_code, 201)
+        self.assertEqual(
+            self.add_caregiver('+14155550123', 'Second caregiver').status_code,
+            201,
+        )
+        with medconnect.app.app_context():
+            medconnect.get_db().execute(
+                'UPDATE medications SET schedule_time = ? WHERE id = ?',
+                ('09:00', medication['id']),
+            )
+            medconnect.get_db().commit()
+
+        provider_settings = {
+            'TWILIO_ACCOUNT_SID': 'AC' + '1' * 32,
+            'TWILIO_AUTH_TOKEN': 'test-token',
+            'TWILIO_SMS_FROM': '+14155550100',
+            'TWILIO_WHATSAPP_FROM': 'whatsapp:+14155550100',
+            'TWILIO_WHATSAPP_CONTENT_SID': 'HX' + '1' * 32,
+        }
+        due_time = datetime(2026, 1, 1, 3, 45, tzinfo=timezone.utc)
+        with patch.dict(os.environ, provider_settings):
+            with patch.object(medconnect, 'send_twilio_caregiver_alert') as send_alert:
+                sent = medconnect.process_due_caregiver_alerts(due_time)
+                repeated = medconnect.process_due_caregiver_alerts(due_time)
+
+        self.assertEqual(sent, 4)
+        self.assertEqual(repeated, 0)
+        self.assertEqual(send_alert.call_count, 4)
+        self.assertEqual(
+            {call.args[1] for call in send_alert.call_args_list},
+            {'sms', 'whatsapp'},
+        )
+        self.assertTrue(all(call.args[1] for call in send_alert.call_args_list))
+        with medconnect.app.app_context():
+            alert = medconnect.get_db().execute(
+                'SELECT status FROM caregiver_alerts WHERE medication_id = ?',
+                (medication['id'],),
+            ).fetchone()
+            deliveries = medconnect.get_db().execute(
+                '''
+                SELECT status, COUNT(*) AS count
+                FROM caregiver_alert_deliveries
+                GROUP BY status
+                '''
+            ).fetchall()
+        self.assertEqual(alert['status'], 'sent')
+        self.assertEqual({row['status']: row['count'] for row in deliveries}, {'sent': 4})
+
+    def test_taken_dose_prevents_caregiver_alerts(self):
+        self.assertEqual(self.signup().status_code, 201)
+        medication = self.client.post(
+            '/api/medications',
+            json={'name': 'Test medicine', 'time': '09:00'},
+        ).get_json()['medication']
+        self.assertEqual(self.add_caregiver().status_code, 201)
+        self.assertEqual(
+            self.client.post(
+                f"/api/medications/{medication['id']}/taken",
+                json={'date': '2026-01-01'},
+            ).status_code,
+            200,
+        )
+        provider_settings = {
+            'TWILIO_ACCOUNT_SID': 'AC' + '1' * 32,
+            'TWILIO_AUTH_TOKEN': 'test-token',
+            'TWILIO_SMS_FROM': '+14155550100',
+            'TWILIO_WHATSAPP_FROM': 'whatsapp:+14155550100',
+            'TWILIO_WHATSAPP_CONTENT_SID': 'HX' + '1' * 32,
+        }
+        with patch.dict(os.environ, provider_settings):
+            with patch.object(medconnect, 'send_twilio_caregiver_alert') as send_alert:
+                sent = medconnect.process_due_caregiver_alerts(
+                    datetime(2026, 1, 1, 3, 45, tzinfo=timezone.utc)
+                )
+        self.assertEqual(sent, 0)
+        send_alert.assert_not_called()
+
+    def test_twilio_whatsapp_request_uses_approved_template_variables(self):
+        provider_settings = {
+            'TWILIO_ACCOUNT_SID': 'AC' + '1' * 32,
+            'TWILIO_AUTH_TOKEN': 'test-token',
+            'TWILIO_SMS_FROM': '+14155550100',
+            'TWILIO_WHATSAPP_FROM': 'whatsapp:+14155550100',
+            'TWILIO_WHATSAPP_CONTENT_SID': 'HX' + '1' * 32,
+        }
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exception_details):
+                return not any(exception_details)
+
+            def read(self):
+                return b'{"sid":"SM123"}'
+
+        with patch.dict(os.environ, provider_settings):
+            with patch.object(
+                medconnect.urllib.request,
+                'urlopen',
+                return_value=FakeResponse(),
+            ) as urlopen:
+                medconnect.send_twilio_caregiver_alert(
+                    '+919876543210',
+                    'whatsapp',
+                    'Test Person',
+                    '09:00',
+                )
+
+        provider_request = urlopen.call_args.args[0]
+        payload = parse_qs(provider_request.data.decode())
+        self.assertEqual(payload['To'], ['whatsapp:+919876543210'])
+        self.assertEqual(payload['ContentSid'], [provider_settings['TWILIO_WHATSAPP_CONTENT_SID']])
+        self.assertEqual(
+            medconnect.json.loads(payload['ContentVariables'][0]),
+            {'1': 'Test Person', '2': '09:00', '3': '15'},
+        )
 
 
 if __name__ == '__main__':

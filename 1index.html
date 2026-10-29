@@ -305,6 +305,36 @@
         .medicine-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
         .medicine-actions button { width: auto; padding: 9px 12px; font-size: 13px; }
         .medicine-actions .secondary { color: var(--text-light); background: #334155; }
+        .prescription-scanner { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+        .prescription-scanner .card-title { margin-bottom: 12px; }
+        .prescription-note, .prescription-status { margin: 0 0 14px; line-height: 1.6; }
+        .prescription-suggestions { display: grid; gap: 12px; margin-top: 16px; }
+        .prescription-suggestion {
+            display: grid; grid-template-columns: minmax(0, 1fr) 150px auto;
+            align-items: end; gap: 0 12px; padding: 14px;
+            border: 1px solid var(--border); border-radius: 12px; background: #0d131e;
+        }
+        .prescription-suggestion input { margin-bottom: 12px; }
+        .prescription-suggestion button { width: auto; margin-bottom: 12px; padding: 12px; }
+        .prescription-suggestion .prescription-row-status { grid-column: 1 / -1; margin: 0; }
+        .pill-color-scanner { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+        .pill-color-result {
+            display: flex; align-items: center; gap: 12px; margin-top: 14px;
+            padding: 14px; border: 1px solid var(--border); border-radius: 12px;
+            background: #0d131e; color: var(--text-light);
+        }
+        .pill-color-swatch {
+            flex: 0 0 36px; width: 36px; height: 36px;
+            border: 2px solid rgba(255,255,255,.55); border-radius: 50%;
+            box-shadow: 0 0 0 1px rgba(0,0,0,.4);
+        }
+        .pill-color-result small { display: block; margin-top: 4px; color: var(--text-main); line-height: 1.5; }
+        .caregiver-settings { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+        .caregiver-settings .card-title { margin-bottom: 12px; }
+        .caregiver-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+        .caregiver-form .policy-consent, .caregiver-form button { grid-column: 1 / -1; }
+        .caregiver-status { min-height: 24px; margin: 0 0 12px; line-height: 1.6; }
+        .caregiver-list { display: grid; gap: 10px; }
         .taken-badge { color: #86efac; font-size: 13px; white-space: nowrap; }
         .missed-badge { color: #fca5a5; font-size: 13px; white-space: nowrap; }
         .empty-state { color: var(--text-main); margin: 0; line-height: 1.6; }
@@ -362,6 +392,10 @@
             .medicine-form button { grid-column: auto; }
             .medicine-item { align-items: flex-start; flex-direction: column; }
             .medicine-actions { justify-content: flex-start; }
+            .prescription-suggestion { grid-template-columns: 1fr; }
+            .prescription-suggestion .prescription-row-status { grid-column: auto; }
+            .caregiver-form { grid-template-columns: 1fr; }
+            .caregiver-form .policy-consent, .caregiver-form button { grid-column: auto; }
         }
     </style>
 </head>
@@ -461,6 +495,57 @@
                         </div>
                         <button id="add-medication-button" type="submit" data-i18n="addMedicine">＋ Dawa add karein</button>
                     </form>
+                    <section class="prescription-scanner" aria-labelledby="prescription-title">
+                        <h3 class="card-title" id="prescription-title" data-i18n="prescriptionTitle">📷 Prescription scanner</h3>
+                        <p class="empty-state prescription-note" data-i18n="prescriptionPrivacy">
+                            Photo isi device par OCR se padhi jayegi; image server par upload nahi hogi. OCR galat ho sakta hai—save karne se pehle doctor ki prescription se naam aur samay milayein.
+                        </p>
+                        <input id="prescription-image" type="file" accept="image/*" capture="environment" hidden>
+                        <button class="auth-switch" id="scan-prescription-button" type="button" onclick="document.getElementById('prescription-image').click()" data-i18n="choosePrescriptionPhoto">Photo kheenchein ya upload karein</button>
+                        <p class="prescription-status empty-state" id="prescription-status" role="status" aria-live="polite"></p>
+                        <div class="prescription-suggestions" id="prescription-suggestions"></div>
+                    </section>
+                    <section class="pill-color-scanner" aria-labelledby="pill-color-title">
+                        <h3 class="card-title" id="pill-color-title" data-i18n="pillColorTitle">🎨 गोली/कैप्सूल का रंग पहचानें</h3>
+                        <p class="empty-state prescription-note" data-i18n="pillColorInstructions">
+                            एक गोली की पास से फोटो लें और उसे फ्रेम के बीच में रखें। सादा, विपरीत रंग की सतह पर तेज़ रोशनी में फोटो लें। रंग इसी डिवाइस पर जाँचा जाएगा; फोटो अपलोड नहीं होगी।
+                        </p>
+                        <input id="pill-color-image" type="file" accept="image/*" capture="environment" hidden>
+                        <button class="auth-switch" id="scan-pill-color-button" type="button" onclick="document.getElementById('pill-color-image').click()" data-i18n="choosePillColorPhoto">गोली की फोटो लें या चुनें</button>
+                        <p class="prescription-status empty-state" id="pill-color-status" role="status" aria-live="polite"></p>
+                        <div class="pill-color-result" id="pill-color-result" aria-live="polite" hidden>
+                            <span class="pill-color-swatch" id="pill-color-swatch" aria-hidden="true"></span>
+                            <div>
+                                <strong id="pill-color-name"></strong>
+                                <small id="pill-color-caveat"></small>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="caregiver-settings" aria-labelledby="caregiver-title">
+                        <h3 class="card-title" id="caregiver-title" data-i18n="caregiverTitle">👨‍👩‍👧‍👦 Caregiver alerts</h3>
+                        <p class="empty-state prescription-note" data-i18n="caregiverIntro">
+                            If a dose is not marked taken 15 minutes after its scheduled time, the server will try to send SMS and WhatsApp alerts to your saved contacts. This requires the app server to be running and the operator to configure Twilio. Messages may be delayed or fail; this is not an emergency service.
+                        </p>
+                        <p class="caregiver-status empty-state" id="caregiver-status" role="status" aria-live="polite"></p>
+                        <form class="caregiver-form" id="caregiver-form">
+                            <div>
+                                <label for="caregiver-name" data-i18n="caregiverName">Family member/caregiver name</label>
+                                <input id="caregiver-name" type="text" maxlength="100" autocomplete="name" required>
+                            </div>
+                            <div>
+                                <label for="caregiver-phone" data-i18n="caregiverPhone">Phone number with country code</label>
+                                <input id="caregiver-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+919876543210" pattern="\+[1-9][0-9]{7,14}" aria-describedby="caregiver-phone-help" required>
+                                <small id="caregiver-phone-help" class="empty-state" data-i18n="caregiverPhoneHelp">Use international format, for example +919876543210.</small>
+                            </div>
+                            <div class="policy-consent">
+                                <input id="caregiver-consent" type="checkbox" required>
+                                <label for="caregiver-consent" data-i18n="caregiverConsent">I confirm this person agreed to receive medicine reminders by both SMS and WhatsApp. Only add contacts who have agreed.</label>
+                            </div>
+                            <button id="add-caregiver-button" type="submit" data-i18n="addCaregiver">＋ Add caregiver</button>
+                        </form>
+                        <p class="caregiver-status empty-state" id="caregiver-action-status" role="status" aria-live="polite"></p>
+                        <div class="caregiver-list" id="caregiver-list" aria-live="polite"></div>
+                    </section>
                     <div id="reminder-status" role="status" aria-live="polite" class="empty-state" data-i18n="reminderIntro">
                         Dawa lene ka alarm bajega; 7 minute baad bhi "Le li" mark na ho to alag awaaz mein reminder milega. 15 minute baad missed-dose reminder milega. Alarm ke liye page khula rakhein.
                     </div>
@@ -590,6 +675,52 @@
                 accountDeleted: 'Your account and app data have been permanently deleted.',
                 deleteAccountFailed: 'Could not delete the account: {error}',
                 myAlarms: '⏰ My medicine alarms',
+                prescriptionTitle: '📷 Prescription scanner',
+                prescriptionPrivacy: 'The photo is read on this device; it is not uploaded to the server. OCR can be wrong—check every medicine name and time against your doctor’s prescription before saving.',
+                choosePrescriptionPhoto: 'Take or choose a prescription photo',
+                prescriptionWorking: 'Reading the photo on this device... this may take a moment.',
+                prescriptionInvalidFile: 'Choose an image smaller than 10 MB.',
+                prescriptionLoadFailed: 'Could not read the photo. Check your connection or try a clearer image.',
+                prescriptionNoText: 'No readable text was found. Try a clearer, well-lit photo.',
+                prescriptionFound: 'Review the detected text below. Correct it before saving; unrecognized times are left blank.',
+                prescriptionNameLabel: 'Medicine name',
+                prescriptionTimeLabel: 'Dose time',
+                prescriptionSave: 'Save to alarms',
+                prescriptionRemove: 'Remove',
+                prescriptionRowRequired: 'Enter the medicine name and confirm its time.',
+                prescriptionSaved: '"{name}" was added to your medicine alarms.',
+                prescriptionSaveFailed: 'Could not save this medicine: {error}',
+                pillColorTitle: '🎨 Detect a pill or capsule color',
+                pillColorInstructions: 'Take a close-up photo of one pill, centered in the frame, on a plain contrasting surface in bright light. Color is analyzed on this device; the photo is not uploaded.',
+                choosePillColorPhoto: 'Take or choose a pill photo',
+                pillColorWorking: 'Checking the visible color on this device...',
+                pillColorInvalidFile: 'Choose an image smaller than 10 MB.',
+                pillColorNoContrast: 'The pill could not be separated clearly from the background. Try a closer photo on a plain contrasting surface.',
+                pillColorReadFailed: 'Could not read this photo. Try another image.',
+                pillColorResult: 'Likely visible color: {color}',
+                pillColorCaveat: 'Approximate color only. Lighting, shadows, and the background affect the result. This does not identify a medicine; verify the pill using its packaging or ask a pharmacist.',
+                pillColorNames: {
+                    white: 'white', lightGray: 'light gray', gray: 'gray', darkGray: 'dark gray',
+                    black: 'black', beige: 'beige', brown: 'brown', orange: 'orange', yellow: 'yellow',
+                    green: 'green', cyan: 'cyan', blue: 'blue', purple: 'purple', pink: 'pink', red: 'red'
+                },
+                caregiverTitle: '👨‍👩‍👧‍👦 Caregiver alerts',
+                caregiverIntro: 'If a dose is not marked taken 15 minutes after its scheduled time, the server will try to send SMS and WhatsApp alerts to your saved contacts. This requires the app server to be running and the operator to configure Twilio. Messages may be delayed or fail; this is not an emergency service.',
+                caregiverName: 'Family member/caregiver name',
+                caregiverPhone: 'Phone number with country code',
+                caregiverPhoneHelp: 'Use international format, for example +919876543210.',
+                caregiverConsent: 'I confirm this person agreed to receive medicine reminders by both SMS and WhatsApp. Only add contacts who have agreed.',
+                addCaregiver: '＋ Add caregiver',
+                removeCaregiver: 'Remove',
+                caregiverProviderReady: 'SMS and WhatsApp delivery is configured. Alerts are checked by the server about every 30 seconds after the 15-minute delay.',
+                caregiverProviderMissing: 'Alerts are not active yet. The server operator must configure TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_SMS_FROM, TWILIO_WHATSAPP_FROM, and an approved TWILIO_WHATSAPP_CONTENT_SID.',
+                caregiverEmpty: 'No family member/caregiver contacts added.',
+                caregiverSaved: 'Caregiver contact saved.',
+                caregiverRemoved: 'Caregiver contact removed.',
+                caregiverSaveFailed: 'Could not save caregiver: {error}',
+                caregiverRemoveFailed: 'Could not remove caregiver: {error}',
+                caregiverLoadFailed: 'Could not load caregiver contacts: {error}',
+                caregiverRow: '{name} • {phone}',
                 medicineName: 'Medicine name',
                 medicinePlaceholder: "For example: a medicine prescribed by your doctor",
                 doseTime: 'Dose time',
@@ -685,7 +816,11 @@
                     'Sign up karne ke liye privacy policy aur terms se sahmat hona zaroori hai.': 'Please agree to the Terms of Use and acknowledge the Privacy Policy to sign up.',
                     'Account delete karne ke liye current password bharein.': 'Enter your current password to delete your account.',
                     'Password sahi nahi hai; account delete nahi hua.': 'The password is incorrect. Your account was not deleted.',
-                    'Bahut saari requests hui hain. Thodi der baad dobara koshish karein.': 'Too many requests. Please wait and try again.'
+                    'Bahut saari requests hui hain. Thodi der baad dobara koshish karein.': 'Too many requests. Please wait and try again.',
+                    'Caregiver ka naam aur sahi international phone number bharein.': 'Enter the caregiver name and a valid international phone number.',
+                    'Dono channels par alert bhejne se pehle caregiver ki sahmati zaroori hai.': 'The caregiver must consent to alerts on both channels.',
+                    'Yeh caregiver number pehle se joda hua hai.': 'This caregiver number is already added.',
+                    'Caregiver numbers ki maximum limit poori ho gayi hai.': 'The maximum number of caregiver contacts has been reached.'
                 }
             },
             hi: {
@@ -734,6 +869,52 @@
                 accountDeleted: 'आपका खाता और ऐप का डेटा स्थायी रूप से मिटा दिया गया है।',
                 deleteAccountFailed: 'खाता नहीं मिटा: {error}',
                 myAlarms: '⏰ मेरी दवाओं के अलार्म',
+                prescriptionTitle: '📷 पर्चे का स्कैनर',
+                prescriptionPrivacy: 'फोटो इसी डिवाइस पर OCR से पढ़ी जाएगी; सर्वर पर अपलोड नहीं होगी। OCR गलत हो सकता है—सेव करने से पहले डॉक्टर के पर्चे से दवा का नाम और समय मिलाएँ।',
+                choosePrescriptionPhoto: 'पर्चे की फोटो खींचें या चुनें',
+                prescriptionWorking: 'फोटो इसी डिवाइस पर पढ़ी जा रही है... इसमें थोड़ा समय लग सकता है।',
+                prescriptionInvalidFile: '10 MB से छोटी इमेज चुनें।',
+                prescriptionLoadFailed: 'फोटो नहीं पढ़ी जा सकी। इंटरनेट जाँचें या अधिक साफ़ फोटो आज़माएँ।',
+                prescriptionNoText: 'पढ़ने योग्य टेक्स्ट नहीं मिला। साफ़ और अच्छी रोशनी वाली फोटो लें।',
+                prescriptionFound: 'नीचे पहचाने गए टेक्स्ट को जाँचें और सेव करने से पहले सुधारें; न पहचाना गया समय खाली रहेगा।',
+                prescriptionNameLabel: 'दवा का नाम',
+                prescriptionTimeLabel: 'खुराक का समय',
+                prescriptionSave: 'अलार्म में सेव करें',
+                prescriptionRemove: 'हटाएँ',
+                prescriptionRowRequired: 'दवा का नाम भरें और समय की पुष्टि करें।',
+                prescriptionSaved: '"{name}" दवा के अलार्म में जोड़ दी गई।',
+                prescriptionSaveFailed: 'दवा सेव नहीं हुई: {error}',
+                pillColorTitle: '🎨 गोली/कैप्सूल का रंग पहचानें',
+                pillColorInstructions: 'एक गोली की पास से फोटो लें और उसे फ्रेम के बीच में रखें। सादा, विपरीत रंग की सतह पर तेज़ रोशनी में फोटो लें। रंग इसी डिवाइस पर जाँचा जाएगा; फोटो अपलोड नहीं होगी।',
+                choosePillColorPhoto: 'गोली की फोटो लें या चुनें',
+                pillColorWorking: 'इस डिवाइस पर दिखाई देने वाला रंग जाँचा जा रहा है...',
+                pillColorInvalidFile: '10 MB से छोटी इमेज चुनें।',
+                pillColorNoContrast: 'गोली को बैकग्राउंड से स्पष्ट रूप से अलग नहीं किया जा सका। सादी, विपरीत रंग की सतह पर पास से फोटो लें।',
+                pillColorReadFailed: 'फोटो पढ़ी नहीं जा सकी। दूसरी इमेज आज़माएँ।',
+                pillColorResult: 'संभावित दिखाई देने वाला रंग: {color}',
+                pillColorCaveat: 'यह रंग का अनुमान है। रोशनी, परछाईं और बैकग्राउंड से नतीजा बदल सकता है। इससे दवा की पहचान नहीं होती; पैकेट देखकर या फार्मासिस्ट से पूछकर पुष्टि करें।',
+                pillColorNames: {
+                    white: 'सफेद', lightGray: 'हल्का स्लेटी', gray: 'स्लेटी', darkGray: 'गहरा स्लेटी',
+                    black: 'काला', beige: 'क्रीम', brown: 'भूरा', orange: 'नारंगी', yellow: 'पीला',
+                    green: 'हरा', cyan: 'फ़िरोज़ी', blue: 'नीला', purple: 'बैंगनी', pink: 'गुलाबी', red: 'लाल'
+                },
+                caregiverTitle: '👨‍👩‍👧‍👦 परिवार और caregiver अलर्ट',
+                caregiverIntro: 'तय समय के 15 मिनट बाद भी खुराक को लिया हुआ न बताएँ, तो server आपके जोड़े हुए नंबरों पर SMS और WhatsApp भेजने की कोशिश करेगा। इसके लिए app server चालू और operator द्वारा Twilio configured होना ज़रूरी है। संदेश में देर हो सकती है या वह पहुँच न पाए; यह emergency सेवा नहीं है।',
+                caregiverName: 'परिवार के सदस्य/caregiver का नाम',
+                caregiverPhone: 'देश कोड सहित फोन नंबर',
+                caregiverPhoneHelp: 'अंतरराष्ट्रीय फ़ॉर्मैट लिखें, जैसे +919876543210।',
+                caregiverConsent: 'मैं पुष्टि करता/करती हूँ कि इस व्यक्ति ने SMS और WhatsApp दोनों पर दवा reminder पाने की सहमति दी है। केवल सहमत लोगों को जोड़ें।',
+                addCaregiver: '＋ Caregiver जोड़ें',
+                removeCaregiver: 'हटाएँ',
+                caregiverProviderReady: 'SMS और WhatsApp configured हैं। 15 मिनट बाद server लगभग हर 30 सेकंड में अलर्ट जाँचेगा।',
+                caregiverProviderMissing: 'अलर्ट अभी चालू नहीं हैं। Server operator को TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_SMS_FROM, TWILIO_WHATSAPP_FROM और approved TWILIO_WHATSAPP_CONTENT_SID configured करना होगा।',
+                caregiverEmpty: 'अभी कोई परिवार सदस्य/caregiver नहीं जोड़ा गया।',
+                caregiverSaved: 'Caregiver का नंबर सहेजा गया।',
+                caregiverRemoved: 'Caregiver का नंबर हटा दिया गया।',
+                caregiverSaveFailed: 'Caregiver नहीं जोड़ा जा सका: {error}',
+                caregiverRemoveFailed: 'Caregiver नहीं हटाया जा सका: {error}',
+                caregiverLoadFailed: 'Caregiver के नंबर लोड नहीं हुए: {error}',
+                caregiverRow: '{name} • {phone}',
                 medicineName: 'दवा का नाम',
                 medicinePlaceholder: 'जैसे: डॉक्टर द्वारा लिखी गई दवा',
                 doseTime: 'खुराक का समय',
@@ -829,7 +1010,11 @@
                     'Sign up karne ke liye privacy policy aur terms se sahmat hona zaroori hai.': 'साइन अप करने के लिए उपयोग की शर्तों और गोपनीयता नीति को स्वीकार करें।',
                     'Account delete karne ke liye current password bharein.': 'खाता मिटाने के लिए वर्तमान पासवर्ड भरें।',
                     'Password sahi nahi hai; account delete nahi hua.': 'पासवर्ड सही नहीं है। आपका खाता नहीं मिटाया गया।',
-                    'Bahut saari requests hui hain. Thodi der baad dobara koshish karein.': 'बहुत अधिक अनुरोध हुए हैं। कृपया थोड़ी देर बाद फिर कोशिश करें।'
+                    'Bahut saari requests hui hain. Thodi der baad dobara koshish karein.': 'बहुत अधिक अनुरोध हुए हैं। कृपया थोड़ी देर बाद फिर कोशिश करें।',
+                    'Caregiver ka naam aur sahi international phone number bharein.': 'Caregiver का नाम और सही अंतरराष्ट्रीय फोन नंबर भरें।',
+                    'Dono channels par alert bhejne se pehle caregiver ki sahmati zaroori hai.': 'दोनों माध्यमों पर alert भेजने से पहले caregiver की सहमति ज़रूरी है।',
+                    'Yeh caregiver number pehle se joda hua hai.': 'यह caregiver नंबर पहले से जोड़ा गया है।',
+                    'Caregiver numbers ki maximum limit poori ho gayi hai.': 'अधिकतम caregiver नंबर की सीमा पूरी हो गई है।'
                 }
             }
         };
@@ -839,6 +1024,9 @@
         let currentUserName = '';
         let speechRecognition = null;
         let speechRecognitionActive = false;
+        let caregiverContacts = [];
+        let caregiverAlertsConfigured = false;
+        let ocrLibraryPromise = null;
 
         document.getElementById('signup-form').addEventListener('submit', (event) => {
             event.preventDefault();
@@ -859,6 +1047,20 @@
         document.getElementById('medicine-form').addEventListener('submit', (event) => {
             event.preventDefault();
             setReminder();
+        });
+        document.getElementById('prescription-image').addEventListener('change', scanPrescription);
+        document.getElementById('pill-color-image').addEventListener('change', scanPillColor);
+        document.getElementById('caregiver-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            addCaregiver();
+        });
+        document.getElementById('assistant-language').addEventListener('change', () => {
+            try {
+                localStorage.setItem(LANGUAGE_STORAGE_KEY, languageSelect.value);
+            } catch (error) {
+                console.error('Could not save assistant language preference:', error);
+            }
+            applyLanguage();
         });
         document.getElementById('delete-account-form').addEventListener('submit', (event) => {
             event.preventDefault();
@@ -1003,10 +1205,111 @@
             languageSelect.options[0].textContent = language === 'en' ? 'Hindi / हिन्दी' : 'हिन्दी';
             languageSelect.options[1].textContent = 'English';
             setAuthMode(authMode, document.getElementById('auth-message').textContent);
+            renderCaregivers(caregiverContacts);
+            updateCaregiverStatus(caregiverAlertsConfigured);
             document.getElementById('welcome-user').textContent =
                 document.getElementById('dashboard').hidden
                     ? ''
                     : t('welcomeUser', { name: currentUserName });
+        }
+
+        function updateCaregiverStatus(configured) {
+            document.getElementById('caregiver-status').textContent =
+                t(configured ? 'caregiverProviderReady' : 'caregiverProviderMissing');
+        }
+
+        function renderCaregivers(caregivers) {
+            const list = document.getElementById('caregiver-list');
+            if (!list) return;
+            list.replaceChildren();
+            if (!caregivers.length) {
+                const empty = document.createElement('p');
+                empty.className = 'empty-state';
+                empty.textContent = t('caregiverEmpty');
+                list.append(empty);
+                return;
+            }
+
+            caregivers.forEach((caregiver) => {
+                const item = document.createElement('div');
+                item.className = 'medicine-item';
+                const name = document.createElement('strong');
+                name.textContent = t('caregiverRow', {
+                    name: caregiver.name,
+                    phone: caregiver.phone_e164
+                });
+                const actions = document.createElement('div');
+                actions.className = 'medicine-actions';
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'secondary';
+                removeButton.textContent = t('removeCaregiver');
+                removeButton.addEventListener('click', () => removeCaregiver(caregiver.id));
+                actions.append(removeButton);
+                item.append(name, actions);
+                list.append(item);
+            });
+        }
+
+        async function refreshCaregivers() {
+            const actionStatus = document.getElementById('caregiver-action-status');
+            try {
+                const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+                await api('/api/caregivers/settings', {
+                    method: 'PUT',
+                    body: JSON.stringify({ time_zone: timeZone })
+                });
+                const result = await api('/api/caregivers');
+                caregiverContacts = result.caregivers;
+                caregiverAlertsConfigured = result.notifications_configured;
+                renderCaregivers(caregiverContacts);
+                updateCaregiverStatus(caregiverAlertsConfigured);
+            } catch (error) {
+                console.error('Could not load caregiver alert settings:', error);
+                actionStatus.textContent = t('caregiverLoadFailed', { error: error.message });
+            }
+        }
+
+        async function addCaregiver() {
+            const form = document.getElementById('caregiver-form');
+            const name = document.getElementById('caregiver-name').value.trim();
+            const phone = document.getElementById('caregiver-phone').value.trim();
+            const consentConfirmed = document.getElementById('caregiver-consent').checked;
+            const button = document.getElementById('add-caregiver-button');
+            const status = document.getElementById('caregiver-action-status');
+            button.disabled = true;
+            try {
+                const result = await api('/api/caregivers', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, phone, consent_confirmed: consentConfirmed })
+                });
+                form.reset();
+                caregiverContacts.push(result.caregiver);
+                caregiverAlertsConfigured = result.notifications_configured;
+                renderCaregivers(caregiverContacts);
+                updateCaregiverStatus(caregiverAlertsConfigured);
+                status.textContent = t('caregiverSaved');
+            } catch (error) {
+                console.error('Could not add caregiver contact:', error);
+                status.textContent = t('caregiverSaveFailed', { error: error.message });
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function removeCaregiver(caregiverId) {
+            const status = document.getElementById('caregiver-action-status');
+            try {
+                await api(`/api/caregivers/${caregiverId}`, { method: 'DELETE' });
+                caregiverContacts = caregiverContacts.filter(
+                    (caregiver) => caregiver.id !== caregiverId
+                );
+                renderCaregivers(caregiverContacts);
+                status.textContent = t('caregiverRemoved');
+            } catch (error) {
+                console.error('Could not remove caregiver contact:', error);
+                status.textContent = t('caregiverRemoveFailed', { error: error.message });
+            }
         }
 
         function showDashboardSection(section) {
@@ -1233,13 +1536,15 @@
             if (!signedIn) {
                 currentUserName = '';
                 clearReminderTimers();
+                caregiverContacts = [];
+                caregiverAlertsConfigured = false;
                 return;
             }
             currentUserName = user.name;
             document.getElementById('welcome-user').textContent =
                 t('welcomeUser', { name: user.name });
             showDashboardSection('alarms');
-            await refreshDashboard();
+            await Promise.all([refreshDashboard(), refreshCaregivers()]);
         }
 
         async function initializeApp() {
@@ -1383,6 +1688,466 @@
                 await refreshDashboard();
             } catch (error) {
                 status.textContent = t('addMedicineFailed', { error: error.message });
+            }
+        }
+
+        function loadOcrLibrary() {
+            if (window.Tesseract) return Promise.resolve(window.Tesseract);
+            if (ocrLibraryPromise) return ocrLibraryPromise;
+
+            ocrLibraryPromise = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+                script.onload = () => {
+                    if (!window.Tesseract) {
+                        ocrLibraryPromise = null;
+                        reject(new Error('Tesseract.js did not initialize'));
+                        return;
+                    }
+                    resolve(window.Tesseract);
+                };
+                script.onerror = () => {
+                    ocrLibraryPromise = null;
+                    reject(new Error('OCR library download failed'));
+                };
+                document.head.append(script);
+            });
+            return ocrLibraryPromise;
+        }
+
+        function prescriptionTimeFromText(text) {
+            const amPm = text.match(/\b(\d{1,2})(?::([0-5]\d))?\s*(a\.?m\.?|p\.?m\.?)\b/i);
+            if (amPm) {
+                const hour = Number(amPm[1]);
+                if (hour < 1 || hour > 12) return '';
+                let hours = hour % 12;
+                if (/p/i.test(amPm[3])) hours += 12;
+                return `${String(hours).padStart(2, '0')}:${amPm[2] || '00'}`;
+            }
+
+            const clockTime = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+            if (clockTime) {
+                return `${String(Number(clockTime[1])).padStart(2, '0')}:${clockTime[2]}`;
+            }
+
+            let periodTime = text.match(
+                /\b(\d{1,2})(?::([0-5]\d))?\s*(?:in the\s+)?(morning|afternoon|evening|night|subah|dopahar|raat)\b/i
+            );
+            let hours;
+            let minutes;
+            let period;
+            if (periodTime) {
+                hours = Number(periodTime[1]);
+                minutes = periodTime[2] || '00';
+                period = periodTime[3];
+            } else {
+                periodTime = text.match(
+                    /(morning|afternoon|evening|night|subah|dopahar|raat)\s*(?:at|around)?\s*(\d{1,2})(?::([0-5]\d))?/i
+                );
+                if (periodTime) {
+                    period = periodTime[1];
+                    hours = Number(periodTime[2]);
+                    minutes = periodTime[3] || '00';
+                } else {
+                    periodTime = text.match(
+                        /(\d{1,2})(?::([0-5]\d))?\s*(?:बजे\s*)?(सुबह|दोपहर|शाम|रात)/
+                    );
+                    if (periodTime) {
+                        hours = Number(periodTime[1]);
+                        minutes = periodTime[2] || '00';
+                        period = periodTime[3];
+                    } else {
+                        periodTime = text.match(
+                            /(सुबह|दोपहर|शाम|रात)\s*(\d{1,2})(?::([0-5]\d))?(?:\s*बजे)?/
+                        );
+                        if (!periodTime) return '';
+                        period = periodTime[1];
+                        hours = Number(periodTime[2]);
+                        minutes = periodTime[3] || '00';
+                    }
+                }
+            }
+            if (hours < 1 || hours > 12) return '';
+            if (/(night|raat|रात)/i.test(period) && hours === 12) {
+                hours = 0;
+            } else if (/(afternoon|evening|night|dopahar|raat|दोपहर|शाम|रात)/i.test(period) && hours < 12) {
+                hours += 12;
+            } else if (/(morning|subah|सुबह)/i.test(period) && hours === 12) {
+                hours = 0;
+            }
+            return `${String(hours % 24).padStart(2, '0')}:${minutes}`;
+        }
+
+        function prescriptionMedicineName(text) {
+            return text
+                .replace(/\b\d{1,2}(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)\b/ig, ' ')
+                .replace(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g, ' ')
+                .replace(/\b\d{1,2}(?::[0-5]\d)?\s*(?:in the\s+)?(?:morning|afternoon|evening|night|subah|dopahar|raat)\b/ig, ' ')
+                .replace(/\b(?:morning|afternoon|evening|night|subah|dopahar|raat)\s*(?:at|around)?\s*\d{1,2}(?::[0-5]\d)?/ig, ' ')
+                .replace(/\d{1,2}(?::[0-5]\d)?\s*(?:बजे\s*)?(सुबह|दोपहर|शाम|रात)|(?:सुबह|दोपहर|शाम|रात)\s*\d{1,2}(?::[0-5]\d)?(?:\s*बजे)?/g, ' ')
+                .replace(/\b(?:morning|breakfast|subah|afternoon|lunch|dopahar|evening|dinner|night|raat)\b/ig, ' ')
+                .replace(/सुबह|दोपहर|शाम|रात|बजे/g, ' ')
+                .replace(/\s+/g, ' ')
+                .replace(/^[\s:;,.-]+|[\s:;,.-]+$/g, '')
+                .trim();
+        }
+
+        function renderPrescriptionSuggestions(lines) {
+            const suggestions = document.getElementById('prescription-suggestions');
+            suggestions.replaceChildren();
+            lines.forEach((line) => {
+                const item = document.createElement('div');
+                item.className = 'prescription-suggestion';
+
+                const nameLabel = document.createElement('label');
+                nameLabel.textContent = t('prescriptionNameLabel');
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.maxLength = 120;
+                nameInput.required = true;
+                nameInput.value = prescriptionMedicineName(line);
+                nameLabel.append(nameInput);
+
+                const timeLabel = document.createElement('label');
+                timeLabel.textContent = t('prescriptionTimeLabel');
+                const timeInput = document.createElement('input');
+                timeInput.type = 'time';
+                timeInput.required = true;
+                timeInput.value = prescriptionTimeFromText(line);
+                timeLabel.append(timeInput);
+
+                const saveButton = document.createElement('button');
+                saveButton.type = 'button';
+                saveButton.textContent = t('prescriptionSave');
+                saveButton.addEventListener('click', () => savePrescriptionSuggestion(
+                    item, nameInput, timeInput, saveButton
+                ));
+
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'auth-switch';
+                removeButton.textContent = t('prescriptionRemove');
+                removeButton.addEventListener('click', () => item.remove());
+
+                const rowStatus = document.createElement('p');
+                rowStatus.className = 'prescription-row-status empty-state';
+                rowStatus.setAttribute('role', 'status');
+                rowStatus.setAttribute('aria-live', 'polite');
+                item.append(nameLabel, timeLabel, saveButton, removeButton, rowStatus);
+                suggestions.append(item);
+            });
+        }
+
+        async function scanPrescription() {
+            const input = document.getElementById('prescription-image');
+            const file = input.files[0];
+            const status = document.getElementById('prescription-status');
+            input.value = '';
+            if (!file) return;
+            if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
+                status.textContent = t('prescriptionInvalidFile');
+                return;
+            }
+
+            const button = document.getElementById('scan-prescription-button');
+            button.disabled = true;
+            document.getElementById('prescription-suggestions').replaceChildren();
+            status.textContent = t('prescriptionWorking');
+            try {
+                const tesseract = await loadOcrLibrary();
+                const worker = await tesseract.createWorker('eng+hin');
+                let recognized;
+                try {
+                    recognized = await worker.recognize(file);
+                } finally {
+                    await worker.terminate();
+                }
+                const lines = recognized.data.text
+                    .split(/\r?\n/)
+                    .map((line) => line.trim())
+                    .filter((line) => /[\p{L}]/u.test(line) && line.length <= 160)
+                    .slice(0, 40);
+                if (!lines.length) {
+                    status.textContent = t('prescriptionNoText');
+                    return;
+                }
+                renderPrescriptionSuggestions(lines);
+                status.textContent = t('prescriptionFound');
+            } catch (error) {
+                console.error('Prescription OCR failed:', error);
+                status.textContent = t('prescriptionLoadFailed');
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        function pillColorCategory(red, green, blue) {
+            const max = Math.max(red, green, blue);
+            const min = Math.min(red, green, blue);
+            const delta = max - min;
+            const lightness = (max + min) / 510;
+            if (delta < 18) {
+                if (lightness >= 0.88) return 'white';
+                if (lightness >= 0.68) return 'lightGray';
+                if (lightness >= 0.36) return 'gray';
+                if (lightness >= 0.16) return 'darkGray';
+                return 'black';
+            }
+
+            const saturation = delta / (255 - Math.abs(max + min - 255));
+            let hue;
+            if (max === red) hue = ((green - blue) / delta) % 6;
+            else if (max === green) hue = (blue - red) / delta + 2;
+            else hue = (red - green) / delta + 4;
+            hue = (hue * 60 + 360) % 360;
+
+            if (hue < 48) {
+                if (lightness < 0.38) return 'brown';
+                if (lightness > 0.78 && saturation < 0.55) return 'beige';
+                return hue < 16 || hue >= 350 ? 'red' : 'orange';
+            }
+            if (hue < 78) return lightness > 0.78 && saturation < 0.55 ? 'beige' : 'yellow';
+            if (hue < 165) return 'green';
+            if (hue < 195) return 'cyan';
+            if (hue < 260) return 'blue';
+            if (hue < 300) return 'purple';
+            if (hue < 350 && lightness > 0.48) return 'pink';
+            return 'red';
+        }
+
+        function estimatePillColor(imageData, width, height) {
+            const pixels = imageData.data;
+            const borderColors = [[], [], []];
+            const borderSamples = [];
+            const borderWidth = Math.max(2, Math.floor(Math.min(width, height) * 0.08));
+            const sampleStep = 8;
+
+            for (let y = 0; y < height; y += sampleStep) {
+                for (let x = 0; x < width; x += sampleStep) {
+                    if (x >= borderWidth && x < width - borderWidth
+                        && y >= borderWidth && y < height - borderWidth) continue;
+                    const index = (y * width + x) * 4;
+                    if (pixels[index + 3] < 200) continue;
+                    borderColors[0].push(pixels[index]);
+                    borderColors[1].push(pixels[index + 1]);
+                    borderColors[2].push(pixels[index + 2]);
+                    borderSamples.push([
+                        pixels[index], pixels[index + 1], pixels[index + 2]
+                    ]);
+                }
+            }
+            if (!borderColors[0].length) return null;
+
+            const background = borderColors.map((channel) => {
+                const sortedChannel = channel.slice().sort((a, b) => a - b);
+                return sortedChannel[Math.floor(sortedChannel.length / 2)];
+            });
+            const colorDistance = (red, green, blue) => {
+                const redMean = (red + background[0]) / 2;
+                const redDifference = red - background[0];
+                const greenDifference = green - background[1];
+                const blueDifference = blue - background[2];
+                return Math.sqrt(
+                    (2 + redMean / 256) * redDifference ** 2
+                    + 4 * greenDifference ** 2
+                    + (2 + (255 - redMean) / 256) * blueDifference ** 2
+                );
+            };
+            const backgroundDistances = [];
+            for (const [red, green, blue] of borderSamples) {
+                backgroundDistances.push(colorDistance(red, green, blue));
+            }
+            backgroundDistances.sort((first, second) => first - second);
+            const backgroundNoise = backgroundDistances[
+                Math.floor((backgroundDistances.length - 1) * 0.9)
+            ];
+            const foregroundThreshold = Math.min(76, Math.max(26, backgroundNoise + 18));
+            const left = Math.floor(width * 0.05);
+            const right = Math.ceil(width * 0.95);
+            const top = Math.floor(height * 0.05);
+            const bottom = Math.ceil(height * 0.95);
+            const step = 2;
+            const gridWidth = Math.ceil((right - left) / step);
+            const gridHeight = Math.ceil((bottom - top) / step);
+            const foreground = new Uint8Array(gridWidth * gridHeight);
+            const componentQueue = new Uint32Array(foreground.length);
+            let foregroundPixels = 0;
+
+            for (let gridY = 0; gridY < gridHeight; gridY += 1) {
+                for (let gridX = 0; gridX < gridWidth; gridX += 1) {
+                    const x = left + gridX * step;
+                    const y = top + gridY * step;
+                    const index = (y * width + x) * 4;
+                    if (pixels[index + 3] < 200) continue;
+                    const red = pixels[index];
+                    const green = pixels[index + 1];
+                    const blue = pixels[index + 2];
+                    if (colorDistance(red, green, blue) <= foregroundThreshold) continue;
+                    foreground[gridY * gridWidth + gridX] = 1;
+                    foregroundPixels += 1;
+                }
+            }
+            if (foregroundPixels < 25) return null;
+
+            let largestComponent = null;
+            for (let start = 0; start < foreground.length; start += 1) {
+                if (!foreground[start]) continue;
+                foreground[start] = 0;
+                componentQueue[0] = start;
+                let queueStart = 0;
+                let queueEnd = 1;
+                const colorCounts = new Map();
+
+                while (queueStart < queueEnd) {
+                    const pixel = componentQueue[queueStart];
+                    queueStart += 1;
+                    const gridX = pixel % gridWidth;
+                    const gridY = Math.floor(pixel / gridWidth);
+                    const x = left + gridX * step;
+                    const y = top + gridY * step;
+                    const colorIndex = (y * width + x) * 4;
+                    const red = pixels[colorIndex];
+                    const green = pixels[colorIndex + 1];
+                    const blue = pixels[colorIndex + 2];
+                    const category = pillColorCategory(red, green, blue);
+                    const entry = colorCounts.get(category) || {
+                        count: 0, red: 0, green: 0, blue: 0
+                    };
+                    entry.count += 1;
+                    entry.red += red;
+                    entry.green += green;
+                    entry.blue += blue;
+                    colorCounts.set(category, entry);
+
+                    for (let neighborY = Math.max(0, gridY - 1);
+                        neighborY <= Math.min(gridHeight - 1, gridY + 1);
+                        neighborY += 1) {
+                        for (let neighborX = Math.max(0, gridX - 1);
+                            neighborX <= Math.min(gridWidth - 1, gridX + 1);
+                            neighborX += 1) {
+                            const neighbor = neighborY * gridWidth + neighborX;
+                            if (!foreground[neighbor]) continue;
+                            foreground[neighbor] = 0;
+                            componentQueue[queueEnd] = neighbor;
+                            queueEnd += 1;
+                        }
+                    }
+                }
+
+                if (!largestComponent || queueEnd > largestComponent.count) {
+                    const [category, dominant] = [...colorCounts.entries()]
+                        .sort((first, second) => second[1].count - first[1].count)[0];
+                    largestComponent = {
+                        count: queueEnd,
+                        category,
+                        rgb: [
+                            Math.round(dominant.red / dominant.count),
+                            Math.round(dominant.green / dominant.count),
+                            Math.round(dominant.blue / dominant.count)
+                        ]
+                    };
+                }
+            }
+
+            if (!largestComponent || largestComponent.count < 25) return null;
+            return {
+                category: largestComponent.category,
+                rgb: largestComponent.rgb
+            };
+        }
+
+        async function scanPillColor() {
+            const input = document.getElementById('pill-color-image');
+            const file = input.files[0];
+            const status = document.getElementById('pill-color-status');
+            const result = document.getElementById('pill-color-result');
+            input.value = '';
+            result.hidden = true;
+            if (!file) return;
+            if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
+                status.textContent = t('pillColorInvalidFile');
+                return;
+            }
+
+            const button = document.getElementById('scan-pill-color-button');
+            button.disabled = true;
+            status.textContent = t('pillColorWorking');
+            try {
+                const image = await createImageBitmap(file, {
+                    resizeWidth: 800,
+                    resizeHeight: 800,
+                    resizeQuality: 'high'
+                });
+                try {
+                    const width = image.width;
+                    const height = image.height;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const context = canvas.getContext('2d', { willReadFrequently: true });
+                    if (!context) throw new Error('Canvas image analysis is unavailable');
+                    context.drawImage(image, 0, 0, width, height);
+                    const estimate = estimatePillColor(
+                        context.getImageData(0, 0, width, height), width, height
+                    );
+                    if (!estimate) {
+                        status.textContent = t('pillColorNoContrast');
+                        return;
+                    }
+
+                    const translations = TRANSLATIONS[
+                        languageSelect.value === 'en' ? 'en' : 'hi'
+                    ].pillColorNames;
+                    const colorName = translations[estimate.category];
+                    document.getElementById('pill-color-name').textContent =
+                        t('pillColorResult', { color: colorName });
+                    document.getElementById('pill-color-swatch').style.backgroundColor =
+                        `rgb(${estimate.rgb.join(', ')})`;
+                    document.getElementById('pill-color-caveat').textContent =
+                        t('pillColorCaveat');
+                    result.hidden = false;
+                    status.textContent = '';
+                } finally {
+                    image.close();
+                }
+            } catch (error) {
+                console.error('Pill color analysis failed:', error);
+                status.textContent = t('pillColorReadFailed');
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function savePrescriptionSuggestion(item, nameInput, timeInput, button) {
+            const name = nameInput.value.trim();
+            const time = timeInput.value;
+            const status = item.querySelector('.prescription-row-status');
+            if (!name || !time || !isValidReminderTime(time)) {
+                status.textContent = t('prescriptionRowRequired');
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                await api('/api/medications', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, time })
+                });
+                status.textContent = t('prescriptionSaved', { name });
+                document.getElementById('prescription-status').textContent =
+                    t('prescriptionSaved', { name });
+                enableReminderAudio();
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission().catch((error) => {
+                        console.error('Notification permission request failed:', error);
+                    });
+                }
+                await refreshDashboard();
+                item.remove();
+            } catch (error) {
+                console.error('Could not save scanned prescription medicine:', error);
+                status.textContent = t('prescriptionSaveFailed', { error: error.message });
+                button.disabled = false;
             }
         }
 

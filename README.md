@@ -26,6 +26,8 @@ $environmentFile = Join-Path $env:LOCALAPPDATA 'MedConnect\docker-tunnel.env'
 docker compose --project-name medconnect-tunnel --env-file $environmentFile -f .\compose.tunnel.yaml up -d --force-recreate app
 ```
 
+Caregiver alerts require a Twilio account and incur messaging charges. Add `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SMS_FROM`, `TWILIO_WHATSAPP_FROM`, and `TWILIO_WHATSAPP_CONTENT_SID` to the same private `docker-tunnel.env` before recreating the app. Use a Twilio SMS-capable sender and an approved WhatsApp sender. Submit and approve a WhatsApp template with these three variables: `{{1}}` the account holder's name, `{{2}}` the scheduled time, and `{{3}}` the 15-minute delay. A template body can be: `MedConnect: {{1}}'s medicine dose scheduled for {{2}} was not marked as taken {{3}} minutes after the alarm. Please check with them. Not emergency monitoring.` Configure the WhatsApp sender as `whatsapp:+<number>` and set the approved template's Content SID. Keep all Twilio credentials private.
+
 The `start_medconnect_docker.ps1` supervisor runs the app container and restarts the Quick Tunnel after failures. The Windows Task Scheduler entry named **MedConnect Public Tunnel** is configured to run that script at sign-in and continue on battery.
 
 The Docker setup uses a separate named data volume. The existing `medconnect.db` was copied into that volume using SQLite's online backup API, preserving its accounts, medicines, and dose history. Do not initialize a fresh empty volume if you need those records. The Windows startup task's previous native-Python version used port 5101; the Docker Quick Tunnel uses port 5103.
@@ -72,6 +74,12 @@ The Privacy Policy and Terms of Use in `templates/privacy.html` and `templates/t
 Backups are separate copies; the operator must enforce and communicate a backup-retention period. Do not claim that deleting an account immediately purges backups or third-party infrastructure logs. The assistant question is processed by this server but is not saved by the assistant feature. Browser speech recognition may process microphone audio using the browser's own provider; the app receives text only when submitted.
 
 The public SOS link opens the device dialer for `108`; it does not place or dispatch a call automatically. Confirm that 108 is the right emergency number for the launch region. Medication alarms run in the user's browser and may be delayed or prevented by device/browser settings; they are not a safety-critical notification service.
+
+On the signed-in medicine alarms page, users can take or choose a prescription photo. English/Hindi OCR runs in the browser using Tesseract.js and language data downloaded from jsDelivr; the image itself is not uploaded. Detected lines and possible times must be checked and corrected before each medicine is saved. OCR does not interpret handwriting or dosing instructions reliably and must not replace the doctor's prescription.
+
+The same page can estimate the visible color of a single pill from a separate close-up photo. Color analysis runs locally in the browser and does not upload or save the image. Use the result only as a rough visual description, not to identify a medicine; lighting, shadows, and the background can change it.
+
+Signed-in users can add up to five family/caregiver phone numbers in international format and must confirm each recipient agreed to both SMS and WhatsApp alerts. With Twilio configured, a server worker checks each schedule in the user's browser-reported time zone and attempts both messages 15 minutes after the scheduled time if that dose has not been marked taken. The worker retries failed provider requests up to three times. This requires the single app instance to stay running; provider delivery may be delayed or fail, and the feature is not an emergency or guaranteed notification service. The alert includes the user's name and scheduled time, not the medicine name. Remove contacts in the alarms section to stop future alerts.
 
 ## Production settings
 
