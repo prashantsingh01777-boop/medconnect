@@ -1,8 +1,11 @@
 import base64
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import hmac
+import io
 import json
 import logging
+import math
 import os
 import re
 import secrets
@@ -20,9 +23,12 @@ from email.message import EmailMessage
 from functools import wraps
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from flask import Flask, g, jsonify, render_template, request, send_from_directory, session
+from flask import Flask, g, jsonify, render_template, request, send_file, send_from_directory, session
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 
 app = Flask(__name__)
 app.config['ENVIRONMENT'] = os.environ.get('MEDCONNECT_ENV', 'development').strip().lower()
@@ -59,7 +65,10 @@ def set_security_headers(response):
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
     response.headers.setdefault('X-Frame-Options', 'DENY')
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
-    response.headers.setdefault('Permissions-Policy', 'camera=(self), geolocation=(), microphone=(self)')
+    response.headers.setdefault(
+        'Permissions-Policy',
+        'camera=(self), geolocation=(self), microphone=(self)',
+    )
     if app.config['SESSION_COOKIE_SECURE']:
         response.headers.setdefault(
             'Strict-Transport-Security', 'max-age=31536000; includeSubDomains'
@@ -300,6 +309,16 @@ def initialize_db():
                     delivered_at TEXT,
                     UNIQUE(alert_id, caregiver_id, channel)
                 );
+                CREATE TABLE IF NOT EXISTS panic_sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    last_update_at TEXT,
+                    status TEXT NOT NULL DEFAULT 'active'
+                );
+                CREATE INDEX IF NOT EXISTS idx_panic_sessions_user_status
+                    ON panic_sessions(user_id, status, expires_at);
                 '''
             )
             user_columns = {
@@ -430,6 +449,15 @@ def valid_date(value):
         return False
 
 
+def get_user_time_zone(database, user_id):
+    user = database.execute(
+        'SELECT time_zone FROM users WHERE id = ?', (user_id,)
+    ).fetchone()
+    if not user:
+        raise ValueError('User time zone could not be loaded.')
+    return ZoneInfo(user['time_zone'])
+
+
 def otp_digest(otp):
     secret = app.secret_key.encode() if isinstance(app.secret_key, str) else app.secret_key
     return hmac.new(secret, otp.encode(), hashlib.sha256).hexdigest()
@@ -550,6 +578,13 @@ def login():
 
 @app.post('/api/logout')
 def logout():
+    user_id = session.get('user_id')
+    if user_id is not None:
+        get_db().execute(
+            "UPDATE panic_sessions SET status = 'stopped' WHERE user_id = ? AND status = 'active'",
+            (user_id,),
+        )
+        get_db().commit()
     session.clear()
     return jsonify({'ok': True})
 
@@ -720,8 +755,11 @@ def confirm_password_reset():
 @app.get('/api/medications')
 @login_required
 def list_medications():
-    today = date.today().isoformat()
-    rows = get_db().execute(
+    database = get_db()
+    today = utc_now().astimezone(
+        get_user_time_zone(database, session['user_id'])
+    ).date().isoformat()
+    rows = database.execute(
         '''
         SELECT m.id, m.name, m.schedule_time,
                COALESCE(h.status, '') = 'taken' AS taken_today
@@ -784,11 +822,16 @@ def mark_medication_taken(medication_id):
     data, error = request_data()
     if error:
         return error
-    taken_date = data.get('date', date.today().isoformat())
+    database = get_db()
+    taken_date = data.get(
+        'date',
+        utc_now().astimezone(
+            get_user_time_zone(database, session['user_id'])
+        ).date().isoformat(),
+    )
     if not valid_date(taken_date):
         return jsonify({'error': 'Dose ki date sahi format mein nahi hai.'}), 400
 
-    database = get_db()
     medication = get_medication_for_user(database, medication_id)
     if not medication:
         return jsonify({'error': 'Yeh dawa nahi mili.'}), 404
@@ -901,9 +944,11 @@ def delete_medication(medication_id):
 @app.get('/api/history')
 @login_required
 def medication_history():
-    today = date.today()
-    first_day = (today - timedelta(days=6)).isoformat()
     database = get_db()
+    today = utc_now().astimezone(
+        get_user_time_zone(database, session['user_id'])
+    ).date()
+    first_day = (today - timedelta(days=6)).isoformat()
     database.execute('DELETE FROM dose_history WHERE taken_date < ?', (first_day,))
     database.execute('DELETE FROM caregiver_alerts WHERE dose_date < ?', (first_day,))
     database.execute(
@@ -922,6 +967,188 @@ def medication_history():
     return jsonify({'history': [dict(row) for row in rows]})
 
 
+def build_adherence_report(database, user_id, now=None):
+    user_zone = get_user_time_zone(database, user_id)
+    current_time = (now or utc_now()).astimezone(user_zone)
+    first_day = current_time.date() - timedelta(days=6)
+    last_day = current_time.date()
+    medications = database.execute(
+        'SELECT id, schedule_time, created_at FROM medications WHERE user_id = ?',
+        (user_id,),
+    ).fetchall()
+    history_rows = database.execute(
+        '''
+        SELECT medication_id, taken_date, taken_at, status
+        FROM dose_history
+        WHERE user_id = ? AND taken_date BETWEEN ? AND ?
+        ORDER BY id
+        ''',
+        (user_id, first_day.isoformat(), last_day.isoformat()),
+    ).fetchall()
+    history = {
+        (row['medication_id'], row['taken_date']): row
+        for row in history_rows
+    }
+
+    daily = []
+    for day_offset in range(7):
+        dose_date = first_day + timedelta(days=day_offset)
+        scheduled_count = 0
+        on_time_count = 0
+        for medication in medications:
+            created_at = datetime.fromisoformat(medication['created_at'])
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            created_local = created_at.astimezone(user_zone)
+            scheduled_time = datetime.strptime(
+                medication['schedule_time'], '%H:%M'
+            ).time()
+            scheduled_at = datetime.combine(
+                dose_date, scheduled_time, tzinfo=user_zone
+            )
+            if created_local > scheduled_at or scheduled_at > current_time:
+                continue
+
+            scheduled_count += 1
+            entry = history.get((medication['id'], dose_date.isoformat()))
+            if not entry or entry['status'] != 'taken':
+                continue
+            try:
+                taken_at = datetime.fromisoformat(entry['taken_at'])
+            except (TypeError, ValueError):
+                continue
+            if taken_at.tzinfo is None:
+                taken_at = taken_at.replace(tzinfo=timezone.utc)
+            taken_local = taken_at.astimezone(user_zone)
+            delay_seconds = (taken_local - scheduled_at).total_seconds()
+            if 0 <= delay_seconds <= 30 * 60:
+                on_time_count += 1
+
+        daily.append({
+            'date': dose_date.isoformat(),
+            'on_time_doses': on_time_count,
+            'scheduled_doses': scheduled_count,
+            'adherence_percent': (
+                round(on_time_count * 100 / scheduled_count)
+                if scheduled_count else None
+            ),
+        })
+
+    scheduled_total = sum(day['scheduled_doses'] for day in daily)
+    on_time_total = sum(day['on_time_doses'] for day in daily)
+    return {
+        'start_date': first_day.isoformat(),
+        'end_date': last_day.isoformat(),
+        'time_zone': user_zone.key,
+        'on_time_window_minutes': 30,
+        'on_time_doses': on_time_total,
+        'scheduled_doses': scheduled_total,
+        'adherence_percent': (
+            round(on_time_total * 100 / scheduled_total)
+            if scheduled_total else None
+        ),
+        'daily': daily,
+    }
+
+
+@app.get('/api/adherence')
+@login_required
+def medication_adherence():
+    report = build_adherence_report(get_db(), session['user_id'])
+    return jsonify({'report': report})
+
+
+@app.get('/api/adherence/report.pdf')
+@login_required
+def medication_adherence_pdf():
+    report = build_adherence_report(get_db(), session['user_id'])
+    pdf_buffer = io.BytesIO()
+    page_width, page_height = A4
+    document = canvas.Canvas(pdf_buffer, pagesize=A4)
+    document.setTitle('MedConnect medication adherence report')
+    document.setFillColor(colors.HexColor('#0f172a'))
+    document.rect(0, page_height - 112, page_width, 112, stroke=0, fill=1)
+    document.setFillColor(colors.white)
+    document.setFont('Helvetica-Bold', 20)
+    document.drawString(42, page_height - 55, 'Medication Adherence')
+    document.setFont('Helvetica', 10)
+    document.drawString(
+        42, page_height - 78,
+        f"Last 7 days: {report['start_date']} to {report['end_date']}",
+    )
+
+    percentage = report['adherence_percent']
+    document.setFillColor(colors.HexColor('#0f172a'))
+    document.setFont('Helvetica-Bold', 34)
+    document.drawString(
+        42, page_height - 172,
+        f'{percentage}%' if percentage is not None else 'N/A',
+    )
+    document.setFont('Helvetica', 11)
+    document.setFillColor(colors.HexColor('#475569'))
+    document.drawString(
+        42, page_height - 194,
+        f"{report['on_time_doses']} of {report['scheduled_doses']} doses on time",
+    )
+    document.drawString(
+        42, page_height - 212,
+        'On time means marked taken within 30 minutes after the scheduled time.',
+    )
+
+    chart_left = 42
+    chart_right = page_width - 42
+    chart_width = chart_right - chart_left
+    chart_top = page_height - 260
+    bar_height = 18
+    row_height = 35
+    document.setFont('Helvetica-Bold', 11)
+    document.setFillColor(colors.HexColor('#0f172a'))
+    document.drawString(chart_left, chart_top, 'Daily adherence')
+    chart_top -= 30
+    for day in report['daily']:
+        label = day['date']
+        percent = day['adherence_percent']
+        value_text = (
+            f"{day['on_time_doses']}/{day['scheduled_doses']}  "
+            f"({percent}%)" if percent is not None else 'No doses due'
+        )
+        document.setFont('Helvetica', 9)
+        document.setFillColor(colors.HexColor('#334155'))
+        document.drawString(chart_left, chart_top + 5, label)
+        document.drawRightString(chart_right, chart_top + 5, value_text)
+        document.setFillColor(colors.HexColor('#e2e8f0'))
+        document.roundRect(
+            chart_left, chart_top - 13, chart_width, bar_height, 8, stroke=0, fill=1
+        )
+        if percent is not None and percent > 0:
+            document.setFillColor(colors.HexColor('#0891b2'))
+            document.roundRect(
+                chart_left, chart_top - 13,
+                chart_width * percent / 100, bar_height, 8, stroke=0, fill=1,
+            )
+        chart_top -= row_height
+
+    document.setStrokeColor(colors.HexColor('#cbd5e1'))
+    document.line(42, 64, page_width - 42, 64)
+    document.setFont('Helvetica', 8)
+    document.setFillColor(colors.HexColor('#64748b'))
+    document.drawString(
+        42, 48,
+        'Tracking summary only; it is not medical advice or a substitute for your clinician.',
+    )
+    document.save()
+    pdf_buffer.seek(0)
+    return send_file(
+        pdf_buffer,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=(
+            f"medconnect-adherence-{report['start_date']}-{report['end_date']}.pdf"
+        ),
+        max_age=0,
+    )
+
+
 def caregiver_notifications_configured():
     required_settings = (
         'TWILIO_ACCOUNT_SID',
@@ -929,6 +1156,17 @@ def caregiver_notifications_configured():
         'TWILIO_SMS_FROM',
         'TWILIO_WHATSAPP_FROM',
         'TWILIO_WHATSAPP_CONTENT_SID',
+    )
+    return all(os.environ.get(setting, '').strip() for setting in required_settings)
+
+
+def panic_notifications_configured():
+    required_settings = (
+        'TWILIO_ACCOUNT_SID',
+        'TWILIO_AUTH_TOKEN',
+        'TWILIO_SMS_FROM',
+        'TWILIO_WHATSAPP_FROM',
+        'TWILIO_WHATSAPP_PANIC_CONTENT_SID',
     )
     return all(os.environ.get(setting, '').strip() for setting in required_settings)
 
@@ -974,6 +1212,105 @@ def send_twilio_caregiver_alert(phone_e164, channel, user_name, schedule_time):
         provider_result = json.loads(response.read())
     if not isinstance(provider_result, dict) or not provider_result.get('sid'):
         raise ValueError('Messaging provider did not return a message ID')
+
+
+def send_twilio_panic_alert(phone_e164, channel, user_name, location_url, duration_minutes):
+    account_sid = os.environ['TWILIO_ACCOUNT_SID'].strip()
+    auth_token = os.environ['TWILIO_AUTH_TOKEN'].strip()
+    sender = os.environ[
+        'TWILIO_SMS_FROM' if channel == 'sms' else 'TWILIO_WHATSAPP_FROM'
+    ].strip()
+    recipient = phone_e164 if channel == 'sms' else f'whatsapp:{phone_e164}'
+    payload = {
+        'To': recipient,
+        'From': sender if channel == 'sms' or sender.startswith('whatsapp:') else f'whatsapp:{sender}',
+    }
+    if channel == 'whatsapp':
+        payload['ContentSid'] = os.environ['TWILIO_WHATSAPP_PANIC_CONTENT_SID'].strip()
+        payload['ContentVariables'] = json.dumps({
+            '1': user_name,
+            '2': location_url,
+            '3': str(duration_minutes),
+        })
+    else:
+        payload['Body'] = (
+            f'MedConnect SOS: {user_name} shared their current location: {location_url} '
+            f'Location updates are scheduled every 15 minutes for up to {duration_minutes} minutes. '
+            'If they may be in immediate danger, contact local emergency services.'
+        )
+
+    url = f'https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json'
+    authorization = base64.b64encode(f'{account_sid}:{auth_token}'.encode()).decode()
+    request_message = urllib.request.Request(
+        url,
+        data=urllib.parse.urlencode(payload).encode(),
+        headers={
+            'Authorization': f'Basic {authorization}',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        method='POST',
+    )
+    with urllib.request.urlopen(request_message, timeout=15) as response:
+        provider_result = json.loads(response.read())
+    if not isinstance(provider_result, dict) or not provider_result.get('sid'):
+        raise ValueError('Messaging provider did not return a message ID')
+
+
+def dispatch_panic_location(database, user_id, location, duration_minutes):
+    user = database.execute(
+        'SELECT name FROM users WHERE id = ?', (user_id,)
+    ).fetchone()
+    contacts = database.execute(
+        '''
+        SELECT phone_e164 FROM caregiver_contacts
+        WHERE user_id = ? ORDER BY id
+        ''',
+        (user_id,),
+    ).fetchall()
+    if not user or not contacts:
+        raise ValueError('Panic contact details are unavailable.')
+
+    latitude = format(location['latitude'], '.6f')
+    longitude = format(location['longitude'], '.6f')
+    location_url = f'https://maps.google.com/?q={latitude},{longitude}'
+    deliveries = [
+        (contact['phone_e164'], channel)
+        for contact in contacts
+        for channel in CAREGIVER_DELIVERY_CHANNELS
+    ]
+    accepted = 0
+    failed = 0
+    with ThreadPoolExecutor(max_workers=len(deliveries)) as executor:
+        futures = {
+            executor.submit(
+                send_twilio_panic_alert,
+                phone,
+                channel,
+                user['name'],
+                location_url,
+                duration_minutes,
+            ): channel
+            for phone, channel in deliveries
+        }
+        for future in as_completed(futures):
+            channel = futures[future]
+            try:
+                future.result()
+            except urllib.error.HTTPError as error:
+                failed += 1
+                logger.error(
+                    'Panic notification failed (channel=%s, HTTP status=%s)',
+                    channel, error.code,
+                )
+            except (OSError, urllib.error.URLError, ValueError, json.JSONDecodeError) as error:
+                failed += 1
+                logger.error(
+                    'Panic notification failed (channel=%s, error=%s)',
+                    channel, type(error).__name__,
+                )
+            else:
+                accepted += 1
+    return {'accepted_by_provider': accepted, 'failed': failed}
 
 
 def update_caregiver_alert_status(database, alert_id, timestamp):
@@ -1262,6 +1599,220 @@ def start_caregiver_alert_worker():
     worker.start()
 
 
+def parse_panic_location(data):
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+    if (
+        isinstance(latitude, bool) or not isinstance(latitude, (int, float))
+        or isinstance(longitude, bool) or not isinstance(longitude, (int, float))
+        or not math.isfinite(latitude) or not math.isfinite(longitude)
+        or not -90 <= latitude <= 90 or not -180 <= longitude <= 180
+    ):
+        return None
+    return {'latitude': latitude, 'longitude': longitude}
+
+
+@app.get('/api/panic/status')
+@login_required
+def panic_status():
+    database = get_db()
+    now = utc_now()
+    now_string = now.isoformat(timespec='seconds')
+    database.execute(
+        '''
+        UPDATE panic_sessions SET status = 'expired'
+        WHERE user_id = ? AND status = 'active' AND expires_at <= ?
+        ''',
+        (session['user_id'], now_string),
+    )
+    database.execute(
+        '''
+        DELETE FROM panic_sessions
+        WHERE user_id = ? AND status != 'active' AND created_at < ?
+        ''',
+        (session['user_id'], (now - timedelta(days=30)).isoformat(timespec='seconds')),
+    )
+    active = database.execute(
+        '''
+        SELECT id, expires_at, last_update_at FROM panic_sessions
+        WHERE user_id = ? AND status = 'active'
+        ORDER BY id DESC LIMIT 1
+        ''',
+        (session['user_id'],),
+    ).fetchone()
+    contact_count = database.execute(
+        'SELECT COUNT(*) FROM caregiver_contacts WHERE user_id = ?',
+        (session['user_id'],),
+    ).fetchone()[0]
+    database.commit()
+    return jsonify({
+        'configured': panic_notifications_configured(),
+        'contact_count': contact_count,
+        'active_session': dict(active) if active else None,
+        'update_interval_minutes': 15,
+        'maximum_duration_minutes': 1440,
+        'location_consent_required': True,
+    })
+
+
+@app.post('/api/panic/start')
+@rate_limited('panic-start', 5, 3600)
+@login_required
+def start_panic_session():
+    data, error = request_data()
+    if error:
+        return error
+    duration_minutes = data.get('duration_minutes')
+    if (
+        isinstance(duration_minutes, bool)
+        or not isinstance(duration_minutes, int)
+        or not 15 <= duration_minutes <= 1440
+        or duration_minutes % 15 != 0
+    ):
+        return jsonify({'error': 'Sharing duration must be from 15 minutes to 24 hours in 15-minute steps.'}), 400
+    if data.get('location_consent_confirmed') is not True:
+        return jsonify({'error': 'Confirm that your caregivers agreed to receive location alerts.'}), 400
+    location = parse_panic_location(data)
+    if location is None:
+        return jsonify({'error': 'A valid current location is required.'}), 400
+    if not panic_notifications_configured():
+        return jsonify({'error': 'Emergency messaging is not available right now.'}), 503
+
+    database = get_db()
+    user_id = session['user_id']
+    if not database.execute(
+        'SELECT 1 FROM caregiver_contacts WHERE user_id = ? LIMIT 1',
+        (user_id,),
+    ).fetchone():
+        return jsonify({'error': 'Add a caregiver contact before starting location sharing.'}), 400
+
+    now = utc_now()
+    now_string = now.isoformat(timespec='seconds')
+    expires_at = (now + timedelta(minutes=duration_minutes)).isoformat(timespec='seconds')
+    database.execute('BEGIN IMMEDIATE')
+    database.execute(
+        '''
+        UPDATE panic_sessions SET status = 'expired'
+        WHERE user_id = ? AND status = 'active' AND expires_at <= ?
+        ''',
+        (user_id, now_string),
+    )
+    active = database.execute(
+        "SELECT id FROM panic_sessions WHERE user_id = ? AND status = 'active' LIMIT 1",
+        (user_id,),
+    ).fetchone()
+    if active:
+        database.commit()
+        return jsonify({'error': 'Location sharing is already active.'}), 409
+    database.execute(
+        '''
+        DELETE FROM panic_sessions
+        WHERE user_id = ? AND status != 'active' AND created_at < ?
+        ''',
+        (user_id, (now - timedelta(days=30)).isoformat(timespec='seconds')),
+    )
+    cursor = database.execute(
+        '''
+        INSERT INTO panic_sessions(
+            user_id, created_at, expires_at, last_update_at, status
+        ) VALUES (?, ?, ?, ?, 'active')
+        ''',
+        (user_id, now_string, expires_at, now_string),
+    )
+    database.commit()
+
+    delivery = dispatch_panic_location(
+        database, user_id, location, duration_minutes
+    )
+    return jsonify({
+        'active_session': {
+            'id': cursor.lastrowid,
+            'expires_at': expires_at,
+            'last_update_at': now_string,
+        },
+        'delivery': delivery,
+        'update_interval_minutes': 15,
+    }), 201
+
+
+@app.post('/api/panic/<int:panic_session_id>/location')
+@login_required
+def update_panic_location(panic_session_id):
+    data, error = request_data()
+    if error:
+        return error
+    location = parse_panic_location(data)
+    if location is None:
+        return jsonify({'error': 'A valid current location is required.'}), 400
+    if not panic_notifications_configured():
+        return jsonify({'error': 'Emergency messaging is not available right now.'}), 503
+
+    database = get_db()
+    now = utc_now()
+    now_string = now.isoformat(timespec='seconds')
+    database.execute('BEGIN IMMEDIATE')
+    panic_session = database.execute(
+        '''
+        SELECT id, expires_at, last_update_at
+        FROM panic_sessions
+        WHERE id = ? AND user_id = ? AND status = 'active'
+        ''',
+        (panic_session_id, session['user_id']),
+    ).fetchone()
+    if not panic_session:
+        database.commit()
+        return jsonify({'error': 'No active location-sharing session was found.'}), 404
+    if panic_session['expires_at'] <= now_string:
+        database.execute(
+            "UPDATE panic_sessions SET status = 'expired' WHERE id = ?",
+            (panic_session_id,),
+        )
+        database.commit()
+        return jsonify({'error': 'Location sharing has expired.'}), 410
+    last_update = datetime.fromisoformat(panic_session['last_update_at'])
+    if (now - last_update).total_seconds() < 15 * 60:
+        database.commit()
+        return jsonify({'error': 'Location updates are limited to once every 15 minutes.'}), 429
+    database.execute(
+        'UPDATE panic_sessions SET last_update_at = ? WHERE id = ?',
+        (now_string, panic_session_id),
+    )
+    database.commit()
+
+    duration_minutes = max(
+        15,
+        round(
+            (
+                datetime.fromisoformat(panic_session['expires_at']) - now
+            ).total_seconds() / 60
+        ),
+    )
+    delivery = dispatch_panic_location(
+        database, session['user_id'], location, duration_minutes
+    )
+    return jsonify({
+        'delivery': delivery,
+        'next_update_at': (now + timedelta(minutes=15)).isoformat(timespec='seconds'),
+    })
+
+
+@app.post('/api/panic/<int:panic_session_id>/stop')
+@login_required
+def stop_panic_session(panic_session_id):
+    database = get_db()
+    cursor = database.execute(
+        '''
+        UPDATE panic_sessions SET status = 'stopped'
+        WHERE id = ? AND user_id = ? AND status = 'active'
+        ''',
+        (panic_session_id, session['user_id']),
+    )
+    database.commit()
+    if cursor.rowcount == 0:
+        return jsonify({'error': 'No active location-sharing session was found.'}), 404
+    return jsonify({'ok': True})
+
+
 @app.get('/api/caregivers')
 @login_required
 def list_caregivers():
@@ -1298,6 +1849,22 @@ def add_caregiver():
         return jsonify({'error': 'Dono channels par alert bhejne se pehle caregiver ki sahmati zaroori hai.'}), 400
 
     database = get_db()
+    now_string = utc_now().isoformat(timespec='seconds')
+    database.execute(
+        '''
+        UPDATE panic_sessions SET status = 'expired'
+        WHERE user_id = ? AND status = 'active' AND expires_at <= ?
+        ''',
+        (session['user_id'], now_string),
+    )
+    database.commit()
+    active_panic = database.execute(
+        "SELECT 1 FROM panic_sessions WHERE user_id = ? AND status = 'active' LIMIT 1",
+        (session['user_id'],),
+    ).fetchone()
+    if active_panic:
+        database.commit()
+        return jsonify({'error': 'Stop location sharing before changing caregiver contacts.'}), 409
     database.execute('BEGIN IMMEDIATE')
     existing = database.execute(
         'SELECT id FROM caregiver_contacts WHERE user_id = ? AND phone_e164 = ?',
@@ -1345,6 +1912,16 @@ def delete_caregiver(caregiver_id):
     database.commit()
     if cursor.rowcount == 0:
         return jsonify({'error': 'Yeh caregiver nahi mila.'}), 404
+    remaining_contacts = database.execute(
+        'SELECT 1 FROM caregiver_contacts WHERE user_id = ? LIMIT 1',
+        (session['user_id'],),
+    ).fetchone()
+    if not remaining_contacts:
+        database.execute(
+            "UPDATE panic_sessions SET status = 'stopped' WHERE user_id = ? AND status = 'active'",
+            (session['user_id'],),
+        )
+        database.commit()
     return jsonify({'ok': True})
 
 

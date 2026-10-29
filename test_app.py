@@ -58,7 +58,7 @@ class ProductionReadinessTests(unittest.TestCase):
         self.assertEqual(health.headers['X-Frame-Options'], 'DENY')
         self.assertEqual(
             health.headers['Permissions-Policy'],
-            'camera=(self), geolocation=(), microphone=(self)',
+            'camera=(self), geolocation=(self), microphone=(self)',
         )
 
     def test_signup_requires_policy_acceptance_and_records_timestamp(self):
@@ -275,6 +275,282 @@ class ProductionReadinessTests(unittest.TestCase):
                 ('person@example.com',),
             ).fetchone()['time_zone']
         self.assertEqual(time_zone, 'America/Los_Angeles')
+
+    def test_weekly_adherence_report_counts_on_time_doses_and_excludes_future_doses(self):
+        self.assertEqual(self.signup().status_code, 201)
+        morning = self.client.post(
+            '/api/medications',
+            json={'name': 'Morning medicine', 'time': '08:00'},
+        ).get_json()['medication']
+        evening = self.client.post(
+            '/api/medications',
+            json={'name': 'Evening medicine', 'time': '23:00'},
+        ).get_json()['medication']
+        with medconnect.app.app_context():
+            database = medconnect.get_db()
+            database.execute(
+                'UPDATE medications SET created_at = ? WHERE id IN (?, ?)',
+                ('2026-01-01T00:00:00+00:00', morning['id'], evening['id']),
+            )
+            doses = (
+                (morning['id'], '2026-01-02', '2026-01-02T03:00:00+00:00', 'taken'),
+                (morning['id'], '2026-01-03', '2026-01-03T03:01:00+00:00', 'taken'),
+                (morning['id'], '2026-01-04', '2026-01-04T02:29:00+00:00', 'taken'),
+                (evening['id'], '2026-01-02', '2026-01-02T18:00:00+00:00', 'taken'),
+            )
+            for medication_id, dose_date, taken_at, status in doses:
+                database.execute(
+                    '''
+                    INSERT INTO dose_history(
+                        user_id, medication_id, medication_name, schedule_time,
+                        taken_at, taken_date, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''',
+                    (
+                        1, medication_id,
+                        'Morning medicine' if medication_id == morning['id']
+                        else 'Evening medicine',
+                        '08:00' if medication_id == morning['id'] else '23:00',
+                        taken_at, dose_date, status,
+                    ),
+                )
+            database.commit()
+
+        with patch.object(
+            medconnect,
+            'utc_now',
+            return_value=datetime(2026, 1, 8, 12, 0, tzinfo=timezone.utc),
+        ):
+            response = self.client.get('/api/adherence')
+
+        self.assertEqual(response.status_code, 200)
+        report = response.get_json()['report']
+        self.assertEqual(report['start_date'], '2026-01-02')
+        self.assertEqual(report['end_date'], '2026-01-08')
+        self.assertEqual(report['on_time_window_minutes'], 30)
+        self.assertEqual(report['scheduled_doses'], 13)
+        self.assertEqual(report['on_time_doses'], 2)
+        self.assertEqual(report['adherence_percent'], 15)
+        self.assertEqual(report['daily'][-1]['scheduled_doses'], 1)
+        self.assertEqual(report['daily'][0]['on_time_doses'], 2)
+
+    def test_history_and_taken_status_use_the_users_local_date(self):
+        self.assertEqual(self.signup().status_code, 201)
+        self.assertEqual(
+            self.client.put(
+                '/api/caregivers/settings',
+                json={'time_zone': 'America/Los_Angeles'},
+            ).status_code,
+            200,
+        )
+        medication = self.client.post(
+            '/api/medications',
+            json={'name': 'Timezone medicine', 'time': '08:00'},
+        ).get_json()['medication']
+        with medconnect.app.app_context():
+            database = medconnect.get_db()
+            for dose_date in ('2026-01-01', '2026-01-07'):
+                database.execute(
+                    '''
+                    INSERT INTO dose_history(
+                        user_id, medication_id, medication_name, schedule_time,
+                        taken_at, taken_date, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'taken')
+                    ''',
+                    (
+                        1, medication['id'], 'Timezone medicine', '08:00',
+                        '2026-01-07T16:00:00+00:00', dose_date,
+                    ),
+                )
+            database.commit()
+
+        with patch.object(
+            medconnect,
+            'utc_now',
+            return_value=datetime(2026, 1, 8, 2, 0, tzinfo=timezone.utc),
+        ):
+            medications = self.client.get('/api/medications').get_json()['medications']
+            history = self.client.get('/api/history').get_json()['history']
+
+        self.assertTrue(medications[0]['taken_today'])
+        self.assertIn('2026-01-01', {entry['taken_date'] for entry in history})
+
+    def test_adherence_pdf_requires_login_and_returns_a_pdf(self):
+        self.assertEqual(
+            self.client.get('/api/adherence/report.pdf').status_code,
+            401,
+        )
+        self.assertEqual(self.signup().status_code, 201)
+        response = self.client.get('/api/adherence/report.pdf')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, 'application/pdf')
+        self.assertTrue(response.data.startswith(b'%PDF-'))
+        self.assertIn('attachment;', response.headers['Content-Disposition'])
+
+    def test_panic_sharing_requires_confirmation_and_sends_only_current_location(self):
+        self.assertEqual(self.client.get('/api/panic/status').status_code, 401)
+        self.assertEqual(self.signup().status_code, 201)
+        self.assertEqual(self.add_caregiver().status_code, 201)
+        provider_settings = {
+            'TWILIO_ACCOUNT_SID': 'AC' + '1' * 32,
+            'TWILIO_AUTH_TOKEN': 'test-token',
+            'TWILIO_SMS_FROM': '+14155550100',
+            'TWILIO_WHATSAPP_FROM': 'whatsapp:+14155550100',
+            'TWILIO_WHATSAPP_PANIC_CONTENT_SID': 'HX' + '2' * 32,
+        }
+        missing_consent = self.client.post(
+            '/api/panic/start',
+            json={
+                'duration_minutes': 30,
+                'location_consent_confirmed': False,
+                'latitude': 28.6139,
+                'longitude': 77.2090,
+            },
+        )
+        self.assertEqual(missing_consent.status_code, 400)
+        self.assertEqual(
+            self.client.post(
+                '/api/panic/start',
+                json={
+                    'duration_minutes': 30,
+                    'location_consent_confirmed': True,
+                    'latitude': 91,
+                    'longitude': 77.2090,
+                },
+            ).status_code,
+            400,
+        )
+
+        with patch.dict(os.environ, provider_settings):
+            with patch.object(
+                medconnect, 'dispatch_panic_location',
+                return_value={'accepted_by_provider': 2, 'failed': 0},
+            ) as dispatch:
+                with patch.object(
+                    medconnect,
+                    'utc_now',
+                    return_value=datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc),
+                ):
+                    started = self.client.post(
+                        '/api/panic/start',
+                        json={
+                            'duration_minutes': 30,
+                            'location_consent_confirmed': True,
+                            'latitude': 28.6139,
+                            'longitude': 77.2090,
+                        },
+                    )
+                    session_id = started.get_json()['active_session']['id']
+                    self.assertEqual(
+                        self.client.post(
+                            f'/api/panic/{session_id}/location',
+                            json={'latitude': 28.6, 'longitude': 77.2},
+                        ).status_code,
+                        429,
+                    )
+                with patch.object(
+                    medconnect,
+                    'utc_now',
+                    return_value=datetime(2026, 1, 1, 0, 15, tzinfo=timezone.utc),
+                ):
+                    update = self.client.post(
+                        f'/api/panic/{session_id}/location',
+                        json={'latitude': 28.6, 'longitude': 77.2},
+                    )
+                self.assertEqual(update.status_code, 200)
+                self.assertEqual(
+                    self.client.post(f'/api/panic/{session_id}/stop').status_code,
+                    200,
+                )
+                self.assertEqual(
+                    self.client.post(
+                        f'/api/panic/{session_id}/location',
+                        json={'latitude': 28.6, 'longitude': 77.2},
+                    ).status_code,
+                    404,
+                )
+
+        self.assertEqual(started.status_code, 201)
+        self.assertEqual(dispatch.call_count, 2)
+        with medconnect.app.app_context():
+            columns = {
+                row['name'] for row in medconnect.get_db().execute(
+                    'PRAGMA table_info(panic_sessions)'
+                ).fetchall()
+            }
+            self.assertNotIn('latitude', columns)
+            self.assertNotIn('longitude', columns)
+            self.assertEqual(
+                medconnect.get_db().execute(
+                    "SELECT status FROM panic_sessions WHERE id = ?",
+                    (session_id,),
+                ).fetchone()['status'],
+                'stopped',
+            )
+
+    def test_panic_start_fails_explicitly_when_messaging_is_not_configured(self):
+        self.assertEqual(self.signup().status_code, 201)
+        self.assertEqual(self.add_caregiver().status_code, 201)
+        response = self.client.post(
+            '/api/panic/start',
+            json={
+                'duration_minutes': 60,
+                'location_consent_confirmed': True,
+                'latitude': 28.6139,
+                'longitude': 77.2090,
+            },
+        )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('Emergency messaging', response.get_json()['error'])
+        self.assertIsNone(self.client.get('/api/panic/status').get_json()['active_session'])
+
+    def test_twilio_panic_whatsapp_request_uses_location_template(self):
+        provider_settings = {
+            'TWILIO_ACCOUNT_SID': 'AC' + '1' * 32,
+            'TWILIO_AUTH_TOKEN': 'test-token',
+            'TWILIO_SMS_FROM': '+14155550100',
+            'TWILIO_WHATSAPP_FROM': 'whatsapp:+14155550100',
+            'TWILIO_WHATSAPP_PANIC_CONTENT_SID': 'HX' + '2' * 32,
+        }
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exception_details):
+                return not any(exception_details)
+
+            def read(self):
+                return b'{"sid":"SM123"}'
+
+        with patch.dict(os.environ, provider_settings):
+            with patch.object(
+                medconnect.urllib.request,
+                'urlopen',
+                return_value=FakeResponse(),
+            ) as urlopen:
+                medconnect.send_twilio_panic_alert(
+                    '+919876543210',
+                    'whatsapp',
+                    'Test Person',
+                    'https://maps.google.com/?q=28.613900,77.209000',
+                    60,
+                )
+
+        payload = parse_qs(urlopen.call_args.args[0].data.decode())
+        self.assertEqual(payload['To'], ['whatsapp:+919876543210'])
+        self.assertEqual(
+            payload['ContentSid'],
+            [provider_settings['TWILIO_WHATSAPP_PANIC_CONTENT_SID']],
+        )
+        self.assertEqual(
+            medconnect.json.loads(payload['ContentVariables'][0]),
+            {
+                '1': 'Test Person',
+                '2': 'https://maps.google.com/?q=28.613900,77.209000',
+                '3': '60',
+            },
+        )
 
     def test_due_caregiver_alerts_send_both_channels_once_per_contact(self):
         self.assertEqual(self.signup().status_code, 201)
