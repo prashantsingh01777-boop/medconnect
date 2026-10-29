@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 import app as medconnect
 
@@ -100,6 +101,49 @@ class ProductionReadinessTests(unittest.TestCase):
             self.assertEqual(database.execute('SELECT COUNT(*) FROM users').fetchone()[0], 0)
             self.assertEqual(database.execute('SELECT COUNT(*) FROM medications').fetchone()[0], 0)
             self.assertEqual(database.execute('SELECT COUNT(*) FROM dose_history').fetchone()[0], 0)
+
+    def test_password_reset_sends_otp_and_accepts_it(self):
+        self.assertEqual(self.signup('person@gmail.com').status_code, 201)
+        with patch.object(medconnect.secrets, 'randbelow', return_value=12345):
+            with patch.object(medconnect, 'send_password_reset_email') as send_email:
+                response = self.client.post(
+                    '/api/password-reset/request',
+                    json={'email': 'person@gmail.com'},
+                )
+
+        self.assertEqual(response.status_code, 200)
+        send_email.assert_called_once_with('person@gmail.com', '012345')
+        confirmation = self.client.post(
+            '/api/password-reset/confirm',
+            json={
+                'email': 'person@gmail.com',
+                'otp': '012345',
+                'password': 'new-test-password-456',
+            },
+        )
+        self.assertEqual(confirmation.status_code, 200)
+        login = self.client.post(
+            '/api/login',
+            json={'email': 'person@gmail.com', 'password': 'new-test-password-456'},
+        )
+        self.assertEqual(login.status_code, 200)
+
+    def test_password_reset_reports_missing_gmail_configuration(self):
+        self.assertEqual(self.signup('person@gmail.com').status_code, 201)
+        with patch.dict(
+            os.environ,
+            {'MEDCONNECT_GMAIL_ADDRESS': '', 'MEDCONNECT_GMAIL_APP_PASSWORD': ''},
+        ):
+            with patch.object(medconnect.logger, 'exception') as log_exception:
+                response = self.client.post(
+                    '/api/password-reset/request',
+                    json={'email': 'person@gmail.com'},
+                )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('MEDCONNECT_GMAIL_ADDRESS', response.get_json()['error'])
+        self.assertIn('MEDCONNECT_GMAIL_APP_PASSWORD', response.get_json()['error'])
+        log_exception.assert_called_once_with('Could not send password reset email')
 
     def test_login_rate_limit_stores_only_hashed_client_address(self):
         for _ in range(10):

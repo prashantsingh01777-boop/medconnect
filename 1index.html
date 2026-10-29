@@ -227,7 +227,7 @@
         }
         .emergency-call {
             position: fixed;
-            right: 20px;
+            left: 20px;
             bottom: 20px;
             z-index: 10;
             display: inline-flex;
@@ -249,13 +249,31 @@
             box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.3);
             outline: none;
         }
+        .dr-smart-toggle {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            z-index: 30;
+            width: auto;
+            min-height: 52px;
+            padding: 12px 18px;
+            border-radius: 999px;
+            box-shadow: 0 8px 24px rgba(0, 242, 254, 0.3);
+        }
+        .dr-smart-toggle:hover { transform: translateY(-2px); }
         @media (max-width: 600px) {
             .emergency-call {
-                right: 14px;
+                left: 14px;
                 bottom: 14px;
                 min-height: 48px;
                 padding: 11px 15px;
                 font-size: 14px;
+            }
+            .dr-smart-toggle {
+                right: 14px;
+                bottom: 14px;
+                min-height: 48px;
+                padding: 11px 15px;
             }
         }
         .auth-container { width: min(92%, 460px); margin: 48px auto; }
@@ -296,6 +314,28 @@
         }
         .dashboard { width: 90%; max-width: 1000px; margin: 25px auto; }
         .dashboard .main-container { display: block; width: 100%; margin: 0; }
+        .dashboard .main-container.assistant-view #assistant-panel {
+            position: fixed;
+            right: 20px;
+            bottom: 88px;
+            z-index: 20;
+            width: min(440px, calc(100vw - 40px));
+            max-height: calc(100vh - 120px);
+            margin: 0;
+            overflow-y: auto;
+        }
+        .assistant-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .assistant-heading .card-title { margin-bottom: 20px; }
+        .assistant-close {
+            flex: 0 0 auto;
+            width: 36px;
+            min-height: 36px;
+            padding: 4px;
+            background: #334155;
+            color: var(--text-light);
+            font-size: 22px;
+            line-height: 1;
+        }
         .dashboard .card:hover { transform: none; }
         .dashboard-nav {
             display: flex; gap: 12px; margin-bottom: 20px; padding: 8px;
@@ -346,6 +386,7 @@
         <span aria-hidden="true">🆘</span>
         <span data-i18n="emergencyCall">SOS • Ambulance 108</span>
     </a>
+    <button class="dr-smart-toggle" id="dr-smart-toggle" type="button" aria-controls="assistant-panel" aria-expanded="false" aria-label="Dr. Smart" data-i18n="drSmart" data-i18n-aria-label="drSmart" onclick="toggleDrSmart()">🤖 Dr. Smart</button>
 
     <div class="hospital-banner">
         <span data-i18n="banner">💖 Apni dawaon ka schedule banayein aur li hui dose ka record rakhein.</span>
@@ -402,7 +443,7 @@
         <nav class="dashboard-nav" aria-label="MedConnect sections" data-i18n-aria-label="dashboardSections">
             <button type="button" aria-current="page" aria-controls="alarms-panel" onclick="showDashboardSection('alarms')" data-i18n="alarmsTab">⏰ Dawa ke alarms</button>
             <button type="button" aria-current="false" aria-controls="history-panel" onclick="showDashboardSection('history')" data-i18n="historyTab">📋 Dawa ki history</button>
-            <button type="button" aria-current="false" aria-controls="assistant-panel" onclick="showDashboardSection('assistant')" data-i18n="assistantTab">🤖 Health Assistant</button>
+            <button type="button" aria-current="false" aria-controls="assistant-panel" onclick="showDashboardSection('assistant')" data-i18n="assistantTab">🤖 Dr. Smart</button>
             <button type="button" aria-current="false" aria-controls="account-panel" onclick="showDashboardSection('account')" data-i18n="accountTab">🔒 Account and privacy</button>
         </nav>
         <div class="main-container">
@@ -439,9 +480,12 @@
                 </div>
             </section>
 
-            <section class="dashboard-panel" id="assistant-panel" aria-label="Health Assistant" data-i18n-aria-label="assistantTab" hidden>
+            <section class="dashboard-panel" id="assistant-panel" aria-label="Dr. Smart" data-i18n-aria-label="assistantTab" hidden>
                 <div class="card">
-                    <h2 class="card-title" data-i18n="healthAssistant">🤖 Dawa aur Health Assistant</h2>
+                    <div class="assistant-heading">
+                        <h2 class="card-title" data-i18n="healthAssistant">🤖 Dr. Smart</h2>
+                        <button class="assistant-close" type="button" aria-label="Close Dr. Smart" data-i18n-aria-label="closeDrSmart" onclick="toggleDrSmart()">×</button>
+                    </div>
                     <p class="empty-state" data-i18n="assistantIntro">Yeh section general health jaankari ke liye hai. Personal dawa ya dose ke liye doctor/pharmacist se poochhein.</p>
                     <button class="auth-switch" id="guest-login-button" type="button" onclick="leaveGuestMode()" hidden data-i18n="loginForPersonalTracking">Dawa schedule ke liye login karein</button>
                     <label for="user-question" data-i18n="symptomQuestion">Kai lakshan ya dawa ke baare mein poochhein</label>
@@ -482,7 +526,7 @@
 
             <div class="footer-text">
                 <span data-i18n="footerNotice">MedConnect sirf tracking aur general health information ke liye hai; dawa doctor ke nirdesh ke mutabik lein.</span>
-                <div class="developer-tag" data-i18n="developer">🚀 Developed by Prashant Singh</div>
+                <div class="developer-tag" data-i18n="developer">🚀 निर्माता: प्रशांत सिंह</div>
                 <div class="legal-links">
                     <a href="/privacy" data-i18n="privacyLink">Privacy Policy</a>
                     <a href="/terms" data-i18n="termsLink">Terms of Use</a>
@@ -533,7 +577,9 @@
                 dashboardSections: 'MedConnect sections',
                 alarmsTab: '⏰ Medicine alarms',
                 historyTab: '📋 Medicine history',
-                assistantTab: '🤖 Health Assistant',
+                assistantTab: '🤖 Dr. Smart',
+                drSmart: '🤖 Dr. Smart',
+                closeDrSmart: 'Close Dr. Smart',
                 accountTab: '🔒 Account and privacy',
                 accountPrivacyTitle: 'Account and privacy',
                 accountPrivacyIntro: 'Your account contains your email, name, medicines, schedules, and dose history. You can permanently delete this account and its app data here.',
@@ -552,7 +598,7 @@
                 manyMedicines: 'You can add alarms for many medicines; there is no small fixed limit.',
                 lastSevenDays: '📋 History for the last 7 days',
                 historyIntro: 'Your dose history for the last 7 days appears here. Older records are automatically removed.',
-                healthAssistant: '🤖 Medicine and Health Assistant',
+                healthAssistant: '🤖 Dr. Smart',
                 assistantIntro: 'This section provides general health information. Ask a doctor or pharmacist about personal medicine or dosage advice.',
                 interfaceLanguage: 'Interface language',
                 symptomQuestion: 'Ask about multiple symptoms or medicines',
@@ -674,7 +720,9 @@
                 dashboardSections: 'MedConnect अनुभाग',
                 alarmsTab: '⏰ दवाओं के अलार्म',
                 historyTab: '📋 दवाओं का इतिहास',
-                assistantTab: '🤖 स्वास्थ्य सहायक',
+                assistantTab: '🤖 Dr. Smart',
+                drSmart: '🤖 Dr. Smart',
+                closeDrSmart: 'Dr. Smart बंद करें',
                 accountTab: '🔒 खाता और गोपनीयता',
                 accountPrivacyTitle: 'खाता और गोपनीयता',
                 accountPrivacyIntro: 'आपके खाते में ईमेल, नाम, दवाओं, उनके समय और खुराक का इतिहास रहता है। यहाँ से आप खाता और ऐप का डेटा स्थायी रूप से मिटा सकते हैं।',
@@ -693,7 +741,7 @@
                 manyMedicines: 'कई दवाओं के अलार्म जोड़ सकते हैं; कोई छोटी तय सीमा नहीं है।',
                 lastSevenDays: '📋 पिछले 7 दिनों का इतिहास',
                 historyIntro: 'पिछले 7 दिनों की खुराक का इतिहास यहाँ दिखेगा। पुराने रिकॉर्ड अपने-आप हट जाएँगे।',
-                healthAssistant: '🤖 दवा और स्वास्थ्य सहायक',
+                healthAssistant: '🤖 Dr. Smart',
                 assistantIntro: 'यह अनुभाग सामान्य स्वास्थ्य जानकारी देता है। व्यक्तिगत दवा या खुराक के लिए डॉक्टर या फार्मासिस्ट से पूछें।',
                 interfaceLanguage: 'इंटरफ़ेस की भाषा',
                 symptomQuestion: 'कई लक्षणों या दवाओं के बारे में पूछें',
@@ -714,7 +762,7 @@
                 healthInformation: 'सामान्य स्वास्थ्य जानकारी:',
                 questionPrompt: 'अपना सवाल लिखें और स्वास्थ्य सुझाव देखें पर क्लिक करें। जवाब यहाँ दिखेगा।',
                 footerNotice: 'MedConnect केवल रिकॉर्ड और सामान्य स्वास्थ्य जानकारी के लिए है। दवा डॉक्टर के निर्देशानुसार लें।',
-                developer: '🚀 निर्माता: Prashant Singh',
+                developer: '🚀 निर्माता: प्रशांत सिंह',
                 welcomeUser: 'नमस्ते, {name}',
                 signupRequiredFields: '⚠️ नाम, ईमेल और पासवर्ड भरें।',
                 loginRequiredFields: '⚠️ ईमेल और पासवर्ड भरें।',
@@ -968,6 +1016,8 @@
             const selectedPanel = sections[section];
             if (!selectedPanel) return;
 
+            document.querySelector('.dashboard .main-container').classList.toggle('assistant-view', section === 'assistant');
+            document.getElementById('dr-smart-toggle').setAttribute('aria-expanded', String(section === 'assistant'));
             Object.entries(sections).forEach(([name, panelId]) => {
                 document.getElementById(panelId).hidden = panelId !== selectedPanel;
                 document.querySelector(`[aria-controls="${panelId}"]`).setAttribute(
@@ -977,16 +1027,34 @@
             });
         }
 
+        function toggleDrSmart() {
+            if (document.getElementById('dashboard').hidden) {
+                enterGuestMode();
+                return;
+            }
+
+            const assistantPanel = document.getElementById('assistant-panel');
+            if (assistantPanel.hidden) {
+                showDashboardSection('assistant');
+            } else {
+                assistantPanel.hidden = true;
+                document.querySelector('.dashboard .main-container').classList.remove('assistant-view');
+                document.getElementById('dr-smart-toggle').setAttribute('aria-expanded', 'false');
+            }
+        }
+
         function enterGuestMode() {
             document.getElementById('auth-container').hidden = true;
             document.getElementById('dashboard').hidden = false;
             document.getElementById('account-actions').hidden = true;
             document.querySelector('.dashboard-nav').hidden = true;
             document.querySelector('.main-container').classList.add('guest-mode');
+            document.querySelector('.dashboard .main-container').classList.add('assistant-view');
             document.getElementById('alarms-panel').hidden = true;
             document.getElementById('history-panel').hidden = true;
             document.getElementById('account-panel').hidden = true;
             document.getElementById('assistant-panel').hidden = false;
+            document.getElementById('dr-smart-toggle').setAttribute('aria-expanded', 'true');
             document.getElementById('guest-login-button').hidden = false;
         }
 
@@ -995,6 +1063,8 @@
             document.getElementById('auth-container').hidden = false;
             document.querySelector('.dashboard-nav').hidden = false;
             document.querySelector('.main-container').classList.remove('guest-mode');
+            document.querySelector('.dashboard .main-container').classList.remove('assistant-view');
+            document.getElementById('dr-smart-toggle').setAttribute('aria-expanded', 'false');
             document.getElementById('guest-login-button').hidden = true;
         }
 

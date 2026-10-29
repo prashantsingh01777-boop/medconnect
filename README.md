@@ -15,9 +15,18 @@ Create `%LOCALAPPDATA%\MedConnect\docker-tunnel.env` with a private, persistent 
 ```dotenv
 MEDCONNECT_SECRET_KEY=replace-with-at-least-64-random-hex-characters
 MEDCONNECT_SUPPORT_EMAIL=your-monitored-support-address
+MEDCONNECT_GMAIL_ADDRESS=your-gmail-address@gmail.com
+MEDCONNECT_GMAIL_APP_PASSWORD=your-16-character-google-app-password
 ```
 
-Generate the secret with `python -c "import secrets; print(secrets.token_hex(32))"`. Keep this file private. The `start_medconnect_docker.ps1` supervisor runs the app container and restarts the Quick Tunnel after failures. The Windows Task Scheduler entry named **MedConnect Public Tunnel** is configured to run that script at sign-in and continue on battery.
+Generate the secret with `python -c "import secrets; print(secrets.token_hex(32))"`. For Gmail, enable 2-Step Verification on the sender account and create an App Password at `https://myaccount.google.com/apppasswords`; use that App Password, not your normal Gmail password. Password-reset emails will not send until both Gmail settings are configured. Keep this file private. After changing it, recreate the app container so it reads the new settings:
+
+```powershell
+$environmentFile = Join-Path $env:LOCALAPPDATA 'MedConnect\docker-tunnel.env'
+docker compose --project-name medconnect-tunnel --env-file $environmentFile -f .\compose.tunnel.yaml up -d --force-recreate app
+```
+
+The `start_medconnect_docker.ps1` supervisor runs the app container and restarts the Quick Tunnel after failures. The Windows Task Scheduler entry named **MedConnect Public Tunnel** is configured to run that script at sign-in and continue on battery.
 
 The Docker setup uses a separate named data volume. The existing `medconnect.db` was copied into that volume using SQLite's online backup API, preserving its accounts, medicines, and dose history. Do not initialize a fresh empty volume if you need those records. The Windows startup task's previous native-Python version used port 5101; the Docker Quick Tunnel uses port 5103.
 
