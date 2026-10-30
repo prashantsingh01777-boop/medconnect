@@ -408,12 +408,24 @@ class ProductionReadinessTests(unittest.TestCase):
             },
         )
         self.assertEqual(missing_consent.status_code, 400)
+        missing_user_consent = self.client.post(
+            '/api/panic/start',
+            json={
+                'duration_minutes': 30,
+                'location_consent_confirmed': True,
+                'user_location_consent_confirmed': False,
+                'latitude': 28.6139,
+                'longitude': 77.2090,
+            },
+        )
+        self.assertEqual(missing_user_consent.status_code, 400)
         self.assertEqual(
             self.client.post(
                 '/api/panic/start',
                 json={
                     'duration_minutes': 30,
                     'location_consent_confirmed': True,
+                    'user_location_consent_confirmed': True,
                     'latitude': 91,
                     'longitude': 77.2090,
                 },
@@ -436,6 +448,7 @@ class ProductionReadinessTests(unittest.TestCase):
                         json={
                             'duration_minutes': 30,
                             'location_consent_confirmed': True,
+                            'user_location_consent_confirmed': True,
                             'latitude': 28.6139,
                             'longitude': 77.2090,
                         },
@@ -496,6 +509,7 @@ class ProductionReadinessTests(unittest.TestCase):
             json={
                 'duration_minutes': 60,
                 'location_consent_confirmed': True,
+                'user_location_consent_confirmed': True,
                 'latitude': 28.6139,
                 'longitude': 77.2090,
             },

@@ -1672,6 +1672,8 @@ def start_panic_session():
         return jsonify({'error': 'Sharing duration must be from 15 minutes to 24 hours in 15-minute steps.'}), 400
     if data.get('location_consent_confirmed') is not True:
         return jsonify({'error': 'Confirm that your caregivers agreed to receive location alerts.'}), 400
+    if data.get('user_location_consent_confirmed') is not True:
+        return jsonify({'error': 'Confirm that you authorize access to and sharing of your current location.'}), 400
     location = parse_panic_location(data)
     if location is None:
         return jsonify({'error': 'A valid current location is required.'}), 400

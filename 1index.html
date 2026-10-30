@@ -390,6 +390,9 @@
         }
         .panic-dialog::backdrop { background: rgba(2, 6, 23, .78); }
         .panic-dialog h3 { color: var(--text-light); }
+        .panic-recipient-list { display: grid; gap: 6px; margin: 8px 0 14px; padding-left: 22px; }
+        .panic-recipient-list li { overflow-wrap: anywhere; }
+        .panic-consent-note { margin: 12px 0 !important; }
         .panic-dialog .policy-consent { display: flex; align-items: flex-start; gap: 10px; }
         .panic-dialog .policy-consent input { flex: 0 0 auto; width: auto; margin: 3px 0 0; }
         .panic-dialog .policy-consent label { margin: 0; color: var(--text-main); text-transform: none; line-height: 1.6; }
@@ -558,7 +561,9 @@
                     <dialog class="panic-dialog" id="panic-confirmation">
                         <form id="panic-confirm-form">
                             <h3 data-i18n="panicConfirmTitle">Confirm emergency location sharing</h3>
-                            <p class="empty-state" data-i18n="panicConfirmIntro">Your current GPS location will be sent now to all saved caregivers through SMS and WhatsApp, then updated every 15 minutes. Messaging charges may apply.</p>
+                            <p class="empty-state" data-i18n="panicConfirmIntro">After you confirm, your browser may ask for location permission. If allowed, your current location will be sent to these caregivers by SMS and WhatsApp, then updated every 15 minutes. You can stop sharing at any time. Messaging charges may apply.</p>
+                            <strong data-i18n="panicRecipients">Location will be shared with:</strong>
+                            <ul class="panic-recipient-list" id="panic-recipient-list"></ul>
                             <label for="panic-duration" data-i18n="panicDuration">Choose how long to share</label>
                             <select id="panic-duration" required>
                                 <option value="15" data-i18n="panicDuration15">15 minutes</option>
@@ -569,6 +574,10 @@
                                 <option value="480" data-i18n="panicDuration480">8 hours</option>
                                 <option value="1440" data-i18n="panicDuration1440">24 hours</option>
                             </select>
+                            <div class="policy-consent panic-consent-note">
+                                <input id="panic-user-location-consent" type="checkbox" required>
+                                <label for="panic-user-location-consent" data-i18n="panicUserLocationConsent">I authorize this app to access my current location and send it to the caregivers listed above for the selected duration. I can stop sharing at any time.</label>
+                            </div>
                             <div class="policy-consent">
                                 <input id="panic-recipient-consent" type="checkbox" required>
                                 <label for="panic-recipient-consent" data-i18n="panicRecipientConsent">I confirm that every saved caregiver agreed to receive my live emergency location.</label>
@@ -808,7 +817,8 @@
                 panicAddCaregiver: 'Add a caregiver contact before starting an alert.',
                 panicActive: 'Location sharing is active until {time}. Keep this page open; updates are sent every 15 minutes.',
                 panicConfirmTitle: 'Confirm emergency location sharing',
-                panicConfirmIntro: 'Your current GPS location will be sent now to all saved caregivers through SMS and WhatsApp, then updated every 15 minutes. Messaging charges may apply.',
+                panicConfirmIntro: 'After you confirm, your browser may ask for location permission. If allowed, your current location will be sent to these caregivers by SMS and WhatsApp, then updated every 15 minutes. You can stop sharing at any time. Messaging charges may apply.',
+                panicRecipients: 'Location will be shared with:',
                 panicDuration: 'Choose how long to share',
                 panicDuration15: '15 minutes',
                 panicDuration30: '30 minutes',
@@ -817,6 +827,7 @@
                 panicDuration240: '4 hours',
                 panicDuration480: '8 hours',
                 panicDuration1440: '24 hours',
+                panicUserLocationConsent: 'I authorize this app to access my current location and send it to the caregivers listed above for the selected duration. I can stop sharing at any time.',
                 panicRecipientConsent: 'I confirm that every saved caregiver agreed to receive my emergency location updates.',
                 panicConfirmSend: 'Confirm and send location',
                 panicLocating: 'Getting your current GPS location...',
@@ -829,6 +840,7 @@
                 panicUpdateSent: 'Location update sent to the messaging provider.',
                 panicNoGeolocation: 'This browser cannot access GPS location.',
                 panicLocationDenied: 'Location permission was denied. Allow location access and try again.',
+                panicSecureContext: 'Location access requires a secure HTTPS connection. Open this app using its secure website address and try again.',
                 panicLocationUnavailable: 'Your current location is unavailable. Move to an area with GPS or network coverage and try again.',
                 panicLocationTimeout: 'Getting your GPS location timed out. Try again.',
                 cancel: 'Cancel',
@@ -839,7 +851,8 @@
                 prescriptionInvalidFile: 'Choose an image smaller than 10 MB.',
                 prescriptionLoadFailed: 'Could not read the photo. Check your connection or try a clearer image.',
                 prescriptionNoText: 'No readable text was found. Try a clearer, well-lit photo.',
-                prescriptionFound: 'Review the detected text below. Correct it before saving; unrecognized times are left blank.',
+                prescriptionNotPrescription: 'No clear medicine or dosage instructions were found. Use a photo of the prescription, not a medicine box or another document.',
+                prescriptionFound: 'Only likely medicine lines are shown. Check every name and enter the dose time yourself before saving.',
                 prescriptionNameLabel: 'Medicine name',
                 prescriptionTimeLabel: 'Dose time',
                 prescriptionSave: 'Save to alarms',
@@ -1055,7 +1068,8 @@
                 panicAddCaregiver: 'अलर्ट शुरू करने से पहले caregiver का नंबर जोड़ें।',
                 panicActive: 'लोकेशन साझा हो रही है; यह {time} तक जारी रहेगी। यह पेज खुला रखें; हर 15 मिनट में अपडेट भेजे जाते हैं।',
                 panicConfirmTitle: 'Emergency लोकेशन साझा करने की पुष्टि करें',
-                panicConfirmIntro: 'आपकी मौजूदा GPS लोकेशन अभी सभी सहेजे गए caregivers को SMS और WhatsApp से भेजी जाएगी; फिर हर 15 मिनट में अपडेट होगी। संदेश भेजने का शुल्क लग सकता है।',
+                panicConfirmIntro: 'पुष्टि के बाद browser लोकेशन की अनुमति माँग सकता है। अनुमति देने पर आपकी मौजूदा लोकेशन नीचे दिए caregivers को SMS और WhatsApp से भेजी जाएगी और हर 15 मिनट में अपडेट होगी। आप कभी भी sharing रोक सकते हैं। संदेश भेजने का शुल्क लग सकता है।',
+                panicRecipients: 'लोकेशन इन लोगों के साथ साझा होगी:',
                 panicDuration: 'लोकेशन साझा करने की अवधि चुनें',
                 panicDuration15: '15 मिनट',
                 panicDuration30: '30 मिनट',
@@ -1064,6 +1078,7 @@
                 panicDuration240: '4 घंटे',
                 panicDuration480: '8 घंटे',
                 panicDuration1440: '24 घंटे',
+                panicUserLocationConsent: 'मैं इस ऐप को अपनी मौजूदा लोकेशन लेने और चुनी हुई अवधि तक ऊपर दिए caregivers को भेजने की अनुमति देता/देती हूँ। मैं कभी भी sharing रोक सकता/सकती हूँ।',
                 panicRecipientConsent: 'मैं पुष्टि करता/करती हूँ कि सभी सहेजे गए caregivers मेरी emergency लोकेशन पाने के लिए सहमत हैं।',
                 panicConfirmSend: 'पुष्टि करके लोकेशन भेजें',
                 panicLocating: 'आपकी मौजूदा GPS लोकेशन ली जा रही है...',
@@ -1076,6 +1091,7 @@
                 panicUpdateSent: 'लोकेशन अपडेट messaging provider को भेज दिया गया।',
                 panicNoGeolocation: 'इस browser में GPS लोकेशन उपलब्ध नहीं है।',
                 panicLocationDenied: 'लोकेशन की अनुमति नहीं मिली। Browser में अनुमति देकर फिर कोशिश करें।',
+                panicSecureContext: 'लोकेशन के लिए सुरक्षित HTTPS कनेक्शन ज़रूरी है। ऐप को उसके सुरक्षित वेबसाइट पते से खोलकर फिर कोशिश करें।',
                 panicLocationUnavailable: 'मौजूदा लोकेशन नहीं मिली। GPS या network coverage वाली जगह पर फिर कोशिश करें।',
                 panicLocationTimeout: 'GPS लोकेशन मिलने में समय समाप्त हुआ। फिर कोशिश करें।',
                 cancel: 'रद्द करें',
@@ -1086,7 +1102,8 @@
                 prescriptionInvalidFile: '10 MB से छोटी इमेज चुनें।',
                 prescriptionLoadFailed: 'फोटो नहीं पढ़ी जा सकी। इंटरनेट जाँचें या अधिक साफ़ फोटो आज़माएँ।',
                 prescriptionNoText: 'पढ़ने योग्य टेक्स्ट नहीं मिला। साफ़ और अच्छी रोशनी वाली फोटो लें।',
-                prescriptionFound: 'नीचे पहचाने गए टेक्स्ट को जाँचें और सेव करने से पहले सुधारें; न पहचाना गया समय खाली रहेगा।',
+                prescriptionNotPrescription: 'दवा या खुराक के निर्देश स्पष्ट नहीं मिले। दवा के डिब्बे या दूसरे दस्तावेज़ की जगह पर्चे की फोटो लें।',
+                prescriptionFound: 'यहाँ सिर्फ़ दवा वाली संभावित पंक्तियाँ दिखाई गई हैं। नाम जाँचें और सेव करने से पहले खुराक का समय भरें।',
                 prescriptionNameLabel: 'दवा का नाम',
                 prescriptionTimeLabel: 'खुराक का समय',
                 prescriptionSave: 'अलार्म में सेव करें',
@@ -1485,6 +1502,16 @@
             });
         }
 
+        function renderPanicRecipients() {
+            const list = document.getElementById('panic-recipient-list');
+            list.replaceChildren();
+            caregiverContacts.forEach((caregiver) => {
+                const item = document.createElement('li');
+                item.textContent = `${caregiver.name} (${caregiver.phone_e164})`;
+                list.append(item);
+            });
+        }
+
         function renderPanicState(message = '') {
             const startButton = document.getElementById('panic-start-button');
             const stopButton = document.getElementById('panic-stop-button');
@@ -1543,7 +1570,9 @@
                 return;
             }
             document.getElementById('panic-recipient-consent').checked = false;
+            document.getElementById('panic-user-location-consent').checked = false;
             document.getElementById('panic-duration').value = '60';
+            renderPanicRecipients();
             document.getElementById('panic-confirmation').showModal();
         }
 
@@ -1552,6 +1581,9 @@
         }
 
         function getCurrentPanicLocation() {
+            if (!window.isSecureContext) {
+                return Promise.reject(new Error(t('panicSecureContext')));
+            }
             if (!navigator.geolocation) {
                 return Promise.reject(new Error(t('panicNoGeolocation')));
             }
@@ -1583,6 +1615,7 @@
                     method: 'POST',
                     body: JSON.stringify({
                         duration_minutes: durationMinutes,
+                        user_location_consent_confirmed: true,
                         location_consent_confirmed: true,
                         ...location
                     })
@@ -2337,16 +2370,50 @@
 
         function prescriptionMedicineName(text) {
             return text
+                .replace(/\b\d+(?:[.,]\d+)?\s*(?:mg|mcg|µg|ug|g|kg|ml|l|iu|units?|%|meq)\b/ig, ' ')
+                .replace(/\b\d+(?:\s*\/\s*\d+)?(?:\s*[-–]\s*\d+(?:\s*\/\s*\d+)?){1,2}\b/g, ' ')
                 .replace(/\b\d{1,2}(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)\b/ig, ' ')
                 .replace(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g, ' ')
                 .replace(/\b\d{1,2}(?::[0-5]\d)?\s*(?:in the\s+)?(?:morning|afternoon|evening|night|subah|dopahar|raat)\b/ig, ' ')
                 .replace(/\b(?:morning|afternoon|evening|night|subah|dopahar|raat)\s*(?:at|around)?\s*\d{1,2}(?::[0-5]\d)?/ig, ' ')
                 .replace(/\d{1,2}(?::[0-5]\d)?\s*(?:बजे\s*)?(सुबह|दोपहर|शाम|रात)|(?:सुबह|दोपहर|शाम|रात)\s*\d{1,2}(?::[0-5]\d)?(?:\s*बजे)?/g, ' ')
+                .replace(/\b(?:tab(?:let)?s?|cap(?:sule)?s?|syrup|susp(?:ension)?|drops?|inj(?:ection)?|cream|ointment|oint|gel|सिरप|टैबलेट|गोली|कैप्सूल|इंजेक्शन|बूंदें?)\b/ig, ' ')
+                .replace(/\b(?:take|takes|taking|use|apply|administer|give|inhale|one|once|twice|thrice|daily|nightly|weekly|every|hours?|days?|weeks?|times?|after|before|food|meals?|bedtime|morning|afternoon|evening|night|od|qd|bd|bid|tds|tid|qid|qds|hs|sos|prn|ac|pc|as|directed|needed|mouth|oral|by|for)\b/ig, ' ')
+                .replace(/\b(?:for|x)\s*\d+\s*(?:days?|weeks?)\b/ig, ' ')
+                .replace(/\b(?:take|takes|taking|use|apply|one|two|three|1|2|3)\s*(?:times?\s*)?(?:a|per)\s*day\b/ig, ' ')
+                .replace(/भोजन(?:\s*के)?\s*(?:पहले|बाद)|खाने\s*के\s*(?:पहले|बाद)|दिन\s*में\s*(?:एक|दो|तीन)?\s*बार|दिन\s*में|रोज़|प्रतिदिन|सुबह|दोपहर|शाम|रात|बजे|गोली|गोलियाँ|कैप्सूल|टैबलेट|सिरप|मिलीग्राम|माइक्रोग्राम|दिनों?\s*तक/g, ' ')
                 .replace(/\b(?:morning|breakfast|subah|afternoon|lunch|dopahar|evening|dinner|night|raat)\b/ig, ' ')
                 .replace(/सुबह|दोपहर|शाम|रात|बजे/g, ' ')
                 .replace(/\s+/g, ' ')
-                .replace(/^[\s:;,.-]+|[\s:;,.-]+$/g, '')
+                .replace(/^[\s:;,./#-]+|[\s:;,./#-]+$/g, '')
                 .trim();
+        }
+
+        function prescriptionMedicineLines(text) {
+            const medicationClue = /\b\d+(?:[.,]\d+)?\s*(?:mg|mcg|µg|ug|g|kg|ml|l|iu|units?|meq)\b|\b(?:tab(?:let)?s?|cap(?:sule)?s?|syrup|susp(?:ension)?|drops?|inj(?:ection)?|cream|ointment|oint|gel|od|qd|bd|bid|tds|tid|qid|qds|hs|sos|prn|ac|pc)\b|\b\d+(?:\s*\/\s*\d+)?(?:\s*[-–]\s*\d+(?:\s*\/\s*\d+)?){1,2}\b|\b(?:once|twice|thrice)\s+(?:a\s+)?day\b|\b(?:after|before)\s+(?:food|meals?)\b|भोजन(?:\s*के)?\s*(?:पहले|बाद)|खाने\s*के\s*(?:पहले|बाद)|दिन\s*में\s*(?:एक|दो|तीन)\s*बार|(?:गोली|गोलियाँ|कैप्सूल|टैबलेट|सिरप|इंजेक्शन)\s*\d+/i;
+            const prescriptionContext = /\b(?:rx|prescription|patient|doctor|dr\.?|clinic|hospital|diagnosis)\b|रोगी|मरीज़|डॉक्टर|चिकित्सक|अस्पताल|पर्चा/i;
+            const dosageSchedule = /\b(?:od|qd|bd|bid|tds|tid|qid|qds|hs|sos|prn|ac|pc)\b|\b\d+(?:\s*\/\s*\d+)?(?:\s*[-–]\s*\d+(?:\s*\/\s*\d+)?){1,2}\b|\b(?:once|twice|thrice)\s+(?:a\s+)?day\b|\b(?:after|before)\s+(?:food|meals?)\b|भोजन(?:\s*के)?\s*(?:पहले|बाद)|खाने\s*के\s*(?:पहले|बाद)|दिन\s*में\s*(?:एक|दो|तीन)\s*बार/i;
+            const nonMedicineLine = /\b(?:patient|name|age|sex|gender|address|phone|mobile|date|doctor|clinic|hospital|department|signature|registration|follow.?up|diagnosis|appointment|email|website|emergency|receipt|invoice|bill|total|thank you)\b|रोगी|मरीज़|उम्र|पता|फोन|मोबाइल|दिनांक|डॉक्टर|चिकित्सक|अस्पताल|हस्ताक्षर|निदान|रसीद|बिल/i;
+            const seen = new Set();
+            const candidates = text
+                .split(/\r?\n/)
+                .map((line) => line.replace(/\s+/g, ' ').trim())
+                .filter((line) => {
+                    if (!line || line.length > 160 || !/[\p{L}]/u.test(line)) return false;
+                    if (nonMedicineLine.test(line) || !medicationClue.test(line)) return false;
+                    const name = prescriptionMedicineName(line);
+                    if ((name.match(/\p{L}/gu) || []).length < 2) return false;
+                    const key = line.toLocaleLowerCase();
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                })
+                .slice(0, 12);
+            if (!prescriptionContext.test(text)
+                && !candidates.some((line) => dosageSchedule.test(line))) {
+                return [];
+            }
+            return candidates;
         }
 
         function renderPrescriptionSuggestions(lines) {
@@ -2419,13 +2486,13 @@
                 } finally {
                     await worker.terminate();
                 }
-                const lines = recognized.data.text
-                    .split(/\r?\n/)
-                    .map((line) => line.trim())
-                    .filter((line) => /[\p{L}]/u.test(line) && line.length <= 160)
-                    .slice(0, 40);
-                if (!lines.length) {
+                if (!recognized.data.text.trim()) {
                     status.textContent = t('prescriptionNoText');
+                    return;
+                }
+                const lines = prescriptionMedicineLines(recognized.data.text);
+                if (!lines.length) {
+                    status.textContent = t('prescriptionNotPrescription');
                     return;
                 }
                 renderPrescriptionSuggestions(lines);
