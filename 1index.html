@@ -358,6 +358,7 @@
         .caregiver-settings .card-title { margin-bottom: 12px; }
         .caregiver-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
         .caregiver-form .policy-consent, .caregiver-form button { grid-column: 1 / -1; }
+        .caregiver-form .message-body-field { grid-column: 1 / -1; }
         .caregiver-status { min-height: 24px; margin: 0 0 12px; line-height: 1.6; }
         .caregiver-list { display: grid; gap: 10px; }
         .taken-badge { color: #86efac; font-size: 13px; white-space: nowrap; }
@@ -550,6 +551,31 @@
                         </form>
                         <p class="caregiver-status empty-state" id="caregiver-action-status" role="status" aria-live="polite"></p>
                         <div class="caregiver-list" id="caregiver-list" aria-live="polite"></div>
+                        <h3 class="card-title" data-i18n="customMessageTitle">✉️ Send a message</h3>
+                        <p class="empty-state" data-i18n="customMessageInfo">Send a message by Twilio SMS or configured Gmail. Only message people who agreed; carrier or provider charges may apply. Messages are not stored by MedConnect.</p>
+                        <form class="caregiver-form" id="custom-message-form">
+                            <div>
+                                <label for="message-channel" data-i18n="messageChannel">Delivery method</label>
+                                <select id="message-channel">
+                                    <option value="sms" data-i18n="messageSms">SMS via Twilio</option>
+                                    <option value="email" data-i18n="messageEmail">Email via Gmail</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="message-recipient" data-i18n="messageRecipient">Recipient</label>
+                                <input id="message-recipient" type="tel" inputmode="tel" autocomplete="tel" placeholder="+919876543210" pattern="\+[1-9][0-9]{7,14}" maxlength="254" required>
+                            </div>
+                            <div class="message-body-field">
+                                <label for="message-body" data-i18n="messageBody">Your message</label>
+                                <textarea id="message-body" rows="4" maxlength="1600" placeholder="Type your message" data-i18n-placeholder="messageBodyPlaceholder" required></textarea>
+                            </div>
+                            <div class="policy-consent">
+                                <input id="message-consent" type="checkbox" required>
+                                <label for="message-consent" data-i18n="messageConsent">I confirm the recipient agreed to receive this message.</label>
+                            </div>
+                            <button id="send-custom-message-button" type="submit" data-i18n="sendMessage">Send message</button>
+                        </form>
+                        <p class="caregiver-status empty-state" id="custom-message-status" role="status" aria-live="polite"></p>
                     </section>
                     <div id="reminder-status" role="status" aria-live="polite" class="empty-state" data-i18n="reminderIntro">
                         Dawa lene ka alarm bajega; 7 minute baad bhi "Le li" mark na ho to alag awaaz mein reminder milega. 15 minute baad missed-dose reminder milega. Alarm ke liye page khula rakhein.
@@ -738,6 +764,21 @@
                 caregiverRemoveFailed: 'Could not remove caregiver: {error}',
                 caregiverLoadFailed: 'Could not load caregiver contacts: {error}',
                 caregiverRow: '{name} • {phone}',
+                customMessageTitle: '✉️ Send a message',
+                customMessageInfo: 'Send a message by Twilio SMS or configured Gmail. Only message people who agreed; carrier or provider charges may apply. Messages are not stored by MedConnect.',
+                messageChannel: 'Delivery method',
+                messageSms: 'SMS via Twilio',
+                messageEmail: 'Email via Gmail',
+                messageRecipient: 'Recipient phone number or email',
+                messagePhonePlaceholder: '+919876543210',
+                messageEmailPlaceholder: 'name@example.com',
+                messageBody: 'Your message',
+                messageBodyPlaceholder: 'Type your message (up to 1600 characters)',
+                messageConsent: 'I confirm the recipient agreed to receive this message.',
+                sendMessage: 'Send message',
+                messageSending: 'Sending message...',
+                messageSent: 'Message sent to the provider.',
+                messageFailed: 'Could not send message: {error}',
                 medicineName: 'Medicine name',
                 medicinePlaceholder: "For example: a medicine prescribed by your doctor",
                 doseTime: 'Dose time',
@@ -851,6 +892,15 @@
                     'Dono channels par alert bhejne se pehle caregiver ki sahmati zaroori hai.': 'The caregiver must consent to alerts on both channels.',
                     'Yeh caregiver number pehle se joda hua hai.': 'This caregiver number is already added.',
                     'Caregiver numbers ki maximum limit poori ho gayi hai.': 'The maximum number of caregiver contacts has been reached.',
+                    'Message bhejne ka madhyam chunein.': 'Choose SMS or email.',
+                    'Message bhejne se pehle recipient ki sahmati zaroori hai.': 'The recipient must agree to receive this message.',
+                    'Message khaali nahi ho sakta aur 1600 characters se chhota hona chahiye.': 'Enter a message of up to 1600 characters.',
+                    'SMS ke liye sahi international phone number bharein.': 'Enter a valid international phone number for SMS.',
+                    'Email ke liye sahi email address bharein.': 'Enter a valid email address.',
+                    'SMS ke liye TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN aur TWILIO_SMS_FROM configure karein.': 'Configure TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_SMS_FROM for SMS sending.',
+                    'Email bhejne ke liye Gmail settings configure nahi hain.': 'Gmail email settings are not configured.',
+                    'Message provider se deliver nahi ho saka. Settings aur number check karein.': 'The provider could not deliver the message. Check the settings and recipient.',
+                    'Message bheja nahi ja saka. Provider settings aur connection check karein.': 'The message could not be sent. Check the provider settings and connection.',
                 }
             },
             hi: {
@@ -930,6 +980,21 @@
                 caregiverRemoveFailed: 'Caregiver नहीं हटाया जा सका: {error}',
                 caregiverLoadFailed: 'Caregiver के नंबर लोड नहीं हुए: {error}',
                 caregiverRow: '{name} • {phone}',
+                customMessageTitle: '✉️ संदेश भेजें',
+                customMessageInfo: 'Twilio SMS या configured Gmail से संदेश भेजें। केवल सहमति देने वाले व्यक्ति को संदेश भेजें; carrier/provider शुल्क लग सकता है। MedConnect संदेश सहेजता नहीं है।',
+                messageChannel: 'भेजने का माध्यम',
+                messageSms: 'Twilio से SMS',
+                messageEmail: 'Gmail से ईमेल',
+                messageRecipient: 'प्राप्तकर्ता का फोन नंबर या ईमेल',
+                messagePhonePlaceholder: '+919876543210',
+                messageEmailPlaceholder: 'name@example.com',
+                messageBody: 'आपका संदेश',
+                messageBodyPlaceholder: 'अपना संदेश लिखें (अधिकतम 1600 अक्षर)',
+                messageConsent: 'मैं पुष्टि करता/करती हूँ कि प्राप्तकर्ता इस संदेश को पाने के लिए सहमत है।',
+                sendMessage: 'संदेश भेजें',
+                messageSending: 'संदेश भेजा जा रहा है...',
+                messageSent: 'संदेश provider को भेज दिया गया।',
+                messageFailed: 'संदेश नहीं भेजा जा सका: {error}',
                 medicineName: 'दवा का नाम',
                 medicinePlaceholder: 'जैसे: डॉक्टर द्वारा लिखी गई दवा',
                 doseTime: 'खुराक का समय',
@@ -1043,6 +1108,15 @@
                     'Dono channels par alert bhejne se pehle caregiver ki sahmati zaroori hai.': 'दोनों माध्यमों पर alert भेजने से पहले caregiver की सहमति ज़रूरी है।',
                     'Yeh caregiver number pehle se joda hua hai.': 'यह caregiver नंबर पहले से जोड़ा गया है।',
                     'Caregiver numbers ki maximum limit poori ho gayi hai.': 'अधिकतम caregiver नंबर की सीमा पूरी हो गई है।',
+                    'Message bhejne ka madhyam chunein.': 'SMS या ईमेल भेजने का माध्यम चुनें।',
+                    'Message bhejne se pehle recipient ki sahmati zaroori hai.': 'संदेश भेजने से पहले प्राप्तकर्ता की सहमति ज़रूरी है।',
+                    'Message khaali nahi ho sakta aur 1600 characters se chhota hona chahiye.': '1600 अक्षरों तक का संदेश लिखें।',
+                    'SMS ke liye sahi international phone number bharein.': 'SMS के लिए सही अंतरराष्ट्रीय फोन नंबर भरें।',
+                    'Email ke liye sahi email address bharein.': 'सही ईमेल पता भरें।',
+                    'SMS ke liye TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN aur TWILIO_SMS_FROM configure karein.': 'SMS भेजने के लिए TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN और TWILIO_SMS_FROM configure करें।',
+                    'Email bhejne ke liye Gmail settings configure nahi hain.': 'ईमेल भेजने के लिए Gmail settings configure नहीं हैं।',
+                    'Message provider se deliver nahi ho saka. Settings aur number check karein.': 'Provider संदेश नहीं भेज सका। Settings और प्राप्तकर्ता जाँचें।',
+                    'Message bheja nahi ja saka. Provider settings aur connection check karein.': 'संदेश नहीं भेजा जा सका। Provider settings और connection जाँचें।',
                 }
             }
         };
@@ -1080,6 +1154,11 @@
             event.preventDefault();
             addCaregiver();
         });
+        document.getElementById('custom-message-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            sendCustomMessage();
+        });
+        document.getElementById('message-channel').addEventListener('change', configureMessageRecipient);
         document.getElementById('assistant-language').addEventListener('change', () => {
             try {
                 localStorage.setItem(LANGUAGE_STORAGE_KEY, languageSelect.value);
@@ -1231,6 +1310,7 @@
             languageSelect.options[0].textContent = language === 'en' ? 'Hindi / हिन्दी' : 'हिन्दी';
             languageSelect.options[1].textContent = 'English';
             setAuthMode(authMode, document.getElementById('auth-message').textContent);
+            configureMessageRecipient();
             renderCaregivers(caregiverContacts);
             document.getElementById('welcome-user').textContent =
                 document.getElementById('dashboard').hidden
@@ -1308,6 +1388,51 @@
             } catch (error) {
                 console.error('Could not add caregiver contact:', error);
                 status.textContent = t('caregiverSaveFailed', { error: error.message });
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        function configureMessageRecipient() {
+            const channel = document.getElementById('message-channel').value;
+            const recipient = document.getElementById('message-recipient');
+            if (channel === 'email') {
+                recipient.type = 'email';
+                recipient.inputMode = 'email';
+                recipient.autocomplete = 'email';
+                recipient.removeAttribute('pattern');
+                recipient.placeholder = t('messageEmailPlaceholder');
+            } else {
+                recipient.type = 'tel';
+                recipient.inputMode = 'tel';
+                recipient.autocomplete = 'tel';
+                recipient.pattern = '\\+[1-9][0-9]{7,14}';
+                recipient.placeholder = t('messagePhonePlaceholder');
+            }
+        }
+
+        async function sendCustomMessage() {
+            const form = document.getElementById('custom-message-form');
+            const button = document.getElementById('send-custom-message-button');
+            const status = document.getElementById('custom-message-status');
+            button.disabled = true;
+            status.textContent = t('messageSending');
+            try {
+                await api('/api/messages/send', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        channel: document.getElementById('message-channel').value,
+                        recipient: document.getElementById('message-recipient').value.trim(),
+                        message: document.getElementById('message-body').value,
+                        consent_confirmed: document.getElementById('message-consent').checked
+                    })
+                });
+                form.reset();
+                configureMessageRecipient();
+                status.textContent = t('messageSent');
+            } catch (error) {
+                console.error('Could not send custom message:', error);
+                status.textContent = t('messageFailed', { error: error.message });
             } finally {
                 button.disabled = false;
             }

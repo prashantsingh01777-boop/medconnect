@@ -4,7 +4,7 @@ import unittest
 from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.parse import parse_qs
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import app as medconnect
 
@@ -389,6 +389,181 @@ class ProductionReadinessTests(unittest.TestCase):
             'filename=medconnect-medicine-report-',
             response.headers['Content-Disposition'],
         )
+
+    def test_custom_message_requires_login_consent_and_valid_recipients(self):
+        response = self.client.post(
+            '/api/messages/send',
+            json={
+                'channel': 'sms',
+                'recipient': '+919876543210',
+                'message': 'Please call me.',
+                'consent_confirmed': True,
+            },
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(self.signup().status_code, 201)
+
+        missing_consent = self.client.post(
+            '/api/messages/send',
+            json={
+                'channel': 'sms',
+                'recipient': '+919876543210',
+                'message': 'Please call me.',
+            },
+        )
+        invalid_email = self.client.post(
+            '/api/messages/send',
+            json={
+                'channel': 'email',
+                'recipient': 'not-an-email',
+                'message': 'Please call me.',
+                'consent_confirmed': True,
+            },
+        )
+        too_long = self.client.post(
+            '/api/messages/send',
+            json={
+                'channel': 'email',
+                'recipient': 'friend@example.com',
+                'message': 'x' * 1601,
+                'consent_confirmed': True,
+            },
+        )
+        self.assertEqual(missing_consent.status_code, 400)
+        self.assertEqual(invalid_email.status_code, 400)
+        self.assertEqual(too_long.status_code, 400)
+
+    def test_custom_message_sends_to_phone_or_email_using_selected_provider(self):
+        self.assertEqual(self.signup().status_code, 201)
+        settings = {
+            'TWILIO_ACCOUNT_SID': 'AC' + '1' * 32,
+            'TWILIO_AUTH_TOKEN': 'test-token',
+            'TWILIO_SMS_FROM': '+14155550100',
+            'MEDCONNECT_GMAIL_ADDRESS': 'sender@gmail.com',
+            'MEDCONNECT_GMAIL_APP_PASSWORD': 'test-app-password',
+        }
+        with patch.dict(os.environ, settings):
+            with patch.object(medconnect, 'send_custom_twilio_sms') as send_sms:
+                sms_response = self.client.post(
+                    '/api/messages/send',
+                    json={
+                        'channel': 'sms',
+                        'recipient': '+919876543210',
+                        'message': 'Please call me.',
+                        'consent_confirmed': True,
+                    },
+                )
+            with patch.object(medconnect, 'send_gmail_message') as send_email:
+                email_response = self.client.post(
+                    '/api/messages/send',
+                    json={
+                        'channel': 'email',
+                        'recipient': 'friend@example.com',
+                        'message': 'Please call me.',
+                        'consent_confirmed': True,
+                    },
+                )
+
+        self.assertEqual(sms_response.status_code, 200)
+        self.assertEqual(email_response.status_code, 200)
+        send_sms.assert_called_once_with('+919876543210', 'Please call me.')
+        send_email.assert_called_once_with(
+            'friend@example.com',
+            'A message from MedConnect',
+            'Please call me.',
+        )
+
+    def test_custom_message_reports_missing_provider_configuration(self):
+        self.assertEqual(self.signup().status_code, 201)
+        settings = {
+            'TWILIO_ACCOUNT_SID': '',
+            'TWILIO_AUTH_TOKEN': '',
+            'TWILIO_SMS_FROM': '',
+            'MEDCONNECT_GMAIL_ADDRESS': '',
+            'MEDCONNECT_GMAIL_APP_PASSWORD': '',
+        }
+        with patch.dict(os.environ, settings):
+            sms_response = self.client.post(
+                '/api/messages/send',
+                json={
+                    'channel': 'sms',
+                    'recipient': '+919876543210',
+                    'message': 'Please call me.',
+                    'consent_confirmed': True,
+                },
+            )
+            email_response = self.client.post(
+                '/api/messages/send',
+                json={
+                    'channel': 'email',
+                    'recipient': 'friend@example.com',
+                    'message': 'Please call me.',
+                    'consent_confirmed': True,
+                },
+            )
+        self.assertEqual(sms_response.status_code, 503)
+        self.assertEqual(email_response.status_code, 503)
+
+    def test_custom_twilio_sms_uses_configured_sender_and_user_message(self):
+        provider_settings = {
+            'TWILIO_ACCOUNT_SID': 'AC' + '1' * 32,
+            'TWILIO_AUTH_TOKEN': 'test-token',
+            'TWILIO_SMS_FROM': '+14155550100',
+        }
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exception_details):
+                return not any(exception_details)
+
+            def read(self):
+                return b'{"sid":"SM123"}'
+
+        with patch.dict(os.environ, provider_settings):
+            with patch.object(
+                medconnect.urllib.request,
+                'urlopen',
+                return_value=FakeResponse(),
+            ) as urlopen:
+                medconnect.send_custom_twilio_sms(
+                    '+919876543210',
+                    'Please call me.',
+                )
+
+        payload = parse_qs(urlopen.call_args.args[0].data.decode())
+        self.assertEqual(payload['To'], ['+919876543210'])
+        self.assertEqual(payload['From'], ['+14155550100'])
+        self.assertEqual(payload['Body'], ['Please call me.'])
+
+    def test_custom_email_uses_configured_gmail_sender(self):
+        settings = {
+            'MEDCONNECT_GMAIL_ADDRESS': 'sender@gmail.com',
+            'MEDCONNECT_GMAIL_APP_PASSWORD': 'test-app-password',
+        }
+        smtp = MagicMock()
+        smtp_context = MagicMock()
+        smtp_context.__enter__.return_value = smtp
+        with patch.dict(os.environ, settings):
+            with patch.object(
+                medconnect.smtplib,
+                'SMTP',
+                return_value=smtp_context,
+            ) as smtp_factory:
+                medconnect.send_gmail_message(
+                    'friend@example.com',
+                    'A message from MedConnect',
+                    'Please call me.',
+                )
+
+        smtp_factory.assert_called_once_with('smtp.gmail.com', 587, timeout=15)
+        smtp.login.assert_called_once_with('sender@gmail.com', 'test-app-password')
+        email = smtp.send_message.call_args.args[0]
+        self.assertEqual(email['From'], 'sender@gmail.com')
+        self.assertEqual(email['To'], 'friend@example.com')
+        self.assertEqual(email['Subject'], 'A message from MedConnect')
+        self.assertEqual(email.get_content().strip(), 'Please call me.')
 
     def test_emergency_location_alert_routes_and_legacy_data_are_removed(self):
         self.assertEqual(self.signup().status_code, 201)

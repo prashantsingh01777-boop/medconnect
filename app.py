@@ -457,22 +457,34 @@ def otp_digest(otp):
 
 
 def send_password_reset_email(email, otp):
+    send_gmail_message(
+        email,
+        'MedConnect password reset OTP',
+        f'MedConnect password reset OTP: {otp}\n\n'
+        'Yeh code 10 minute mein expire ho jayega. Is code ko kisi ke saath share na karein.',
+    )
+
+
+def gmail_delivery_configured():
     sender = os.environ.get('MEDCONNECT_GMAIL_ADDRESS', '').strip()
     app_password = os.environ.get('MEDCONNECT_GMAIL_APP_PASSWORD', '').replace(' ', '')
-    if not sender.casefold().endswith('@gmail.com') or not app_password:
+    return sender.casefold().endswith('@gmail.com') and bool(app_password)
+
+
+def send_gmail_message(email, subject, body):
+    sender = os.environ.get('MEDCONNECT_GMAIL_ADDRESS', '').strip()
+    app_password = os.environ.get('MEDCONNECT_GMAIL_APP_PASSWORD', '').replace(' ', '')
+    if not gmail_delivery_configured():
         raise RuntimeError(
             'Password reset email ke liye MEDCONNECT_GMAIL_ADDRESS aur '
             'MEDCONNECT_GMAIL_APP_PASSWORD configure karein.'
         )
 
     message = EmailMessage()
-    message['Subject'] = 'MedConnect password reset OTP'
+    message['Subject'] = subject
     message['From'] = sender
     message['To'] = email
-    message.set_content(
-        f'MedConnect password reset OTP: {otp}\n\n'
-        'Yeh code 10 minute mein expire ho jayega. Is code ko kisi ke saath share na karein.'
-    )
+    message.set_content(body)
     with smtplib.SMTP('smtp.gmail.com', 587, timeout=15) as smtp:
         smtp.starttls(context=ssl.create_default_context())
         smtp.login(sender, app_password)
@@ -1146,9 +1158,44 @@ def caregiver_notifications_configured():
     return all(os.environ.get(setting, '').strip() for setting in required_settings)
 
 
-def send_twilio_caregiver_alert(phone_e164, channel, user_name, schedule_time):
+def twilio_sms_delivery_configured():
+    required_settings = (
+        'TWILIO_ACCOUNT_SID',
+        'TWILIO_AUTH_TOKEN',
+        'TWILIO_SMS_FROM',
+    )
+    return all(os.environ.get(setting, '').strip() for setting in required_settings)
+
+
+def submit_twilio_message(payload):
     account_sid = os.environ['TWILIO_ACCOUNT_SID'].strip()
     auth_token = os.environ['TWILIO_AUTH_TOKEN'].strip()
+    url = f'https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json'
+    authorization = base64.b64encode(f'{account_sid}:{auth_token}'.encode()).decode()
+    request_message = urllib.request.Request(
+        url,
+        data=urllib.parse.urlencode(payload).encode(),
+        headers={
+            'Authorization': f'Basic {authorization}',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        method='POST',
+    )
+    with urllib.request.urlopen(request_message, timeout=15) as response:
+        provider_result = json.loads(response.read())
+    if not isinstance(provider_result, dict) or not provider_result.get('sid'):
+        raise ValueError('Messaging provider did not return a message ID')
+
+
+def send_custom_twilio_sms(phone_e164, body):
+    submit_twilio_message({
+        'To': phone_e164,
+        'From': os.environ['TWILIO_SMS_FROM'].strip(),
+        'Body': body,
+    })
+
+
+def send_twilio_caregiver_alert(phone_e164, channel, user_name, schedule_time):
     sender = os.environ[
         'TWILIO_SMS_FROM' if channel == 'sms' else 'TWILIO_WHATSAPP_FROM'
     ].strip()
@@ -1172,21 +1219,7 @@ def send_twilio_caregiver_alert(phone_e164, channel, user_name, schedule_time):
     else:
         payload['Body'] = message
 
-    url = f'https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json'
-    authorization = base64.b64encode(f'{account_sid}:{auth_token}'.encode()).decode()
-    request_message = urllib.request.Request(
-        url,
-        data=urllib.parse.urlencode(payload).encode(),
-        headers={
-            'Authorization': f'Basic {authorization}',
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        method='POST',
-    )
-    with urllib.request.urlopen(request_message, timeout=15) as response:
-        provider_result = json.loads(response.read())
-    if not isinstance(provider_result, dict) or not provider_result.get('sid'):
-        raise ValueError('Messaging provider did not return a message ID')
+    submit_twilio_message(payload)
 
 
 def update_caregiver_alert_status(database, alert_id, timestamp):
@@ -1580,6 +1613,63 @@ def update_caregiver_settings():
         (time_zone, session['user_id']),
     )
     get_db().commit()
+    return jsonify({'ok': True})
+
+
+@app.post('/api/messages/send')
+@rate_limited('custom-message-send', 10, 3600)
+@login_required
+def send_custom_message():
+    data, error = request_data()
+    if error:
+        return error
+
+    channel = data.get('channel')
+    recipient = data.get('recipient', '').strip() if isinstance(
+        data.get('recipient'), str
+    ) else ''
+    body = data.get('message', '').strip() if isinstance(data.get('message'), str) else ''
+    if channel not in ('sms', 'email'):
+        return jsonify({'error': 'Message bhejne ka madhyam chunein.'}), 400
+    if data.get('consent_confirmed') is not True:
+        return jsonify({'error': 'Message bhejne se pehle recipient ki sahmati zaroori hai.'}), 400
+    if not body or len(body) > 1600:
+        return jsonify({'error': 'Message khaali nahi ho sakta aur 1600 characters se chhota hona chahiye.'}), 400
+
+    if channel == 'sms':
+        if not re.fullmatch(r'\+[1-9]\d{7,14}', recipient):
+            return jsonify({'error': 'SMS ke liye sahi international phone number bharein.'}), 400
+        if not twilio_sms_delivery_configured():
+            return jsonify({
+                'error': (
+                    'SMS ke liye TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN aur '
+                    'TWILIO_SMS_FROM configure karein.'
+                )
+            }), 503
+    else:
+        if not valid_email(recipient):
+            return jsonify({'error': 'Email ke liye sahi email address bharein.'}), 400
+        if not gmail_delivery_configured():
+            return jsonify({'error': 'Email bhejne ke liye Gmail settings configure nahi hain.'}), 503
+
+    try:
+        if channel == 'sms':
+            send_custom_twilio_sms(recipient, body)
+        else:
+            send_gmail_message(recipient, 'A message from MedConnect', body)
+    except urllib.error.HTTPError as error:
+        logger.error(
+            'Custom message delivery failed (channel=%s, HTTP status=%s)',
+            channel, error.code,
+        )
+        return jsonify({'error': 'Message provider se deliver nahi ho saka. Settings aur number check karein.'}), 502
+    except (OSError, smtplib.SMTPException, urllib.error.URLError, ValueError) as error:
+        logger.error(
+            'Custom message delivery failed (channel=%s, error=%s)',
+            channel, type(error).__name__,
+        )
+        return jsonify({'error': 'Message bheja nahi ja saka. Provider settings aur connection check karein.'}), 502
+
     return jsonify({'ok': True})
 
 

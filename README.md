@@ -19,14 +19,16 @@ MEDCONNECT_GMAIL_ADDRESS=your-gmail-address@gmail.com
 MEDCONNECT_GMAIL_APP_PASSWORD=your-16-character-google-app-password
 ```
 
-Generate the secret with `python -c "import secrets; print(secrets.token_hex(32))"`. For Gmail, enable 2-Step Verification on the sender account and create an App Password at `https://myaccount.google.com/apppasswords`; use that App Password, not your normal Gmail password. Password-reset emails will not send until both Gmail settings are configured. Keep this file private. After changing it, recreate the app container so it reads the new settings:
+Generate the secret with `python -c "import secrets; print(secrets.token_hex(32))"`. For Gmail, enable 2-Step Verification on the sender account and create an App Password at `https://myaccount.google.com/apppasswords`; use that App Password, not your normal Gmail password. The Gmail settings enable password-reset email and user-composed email messages. Keep this file private. After changing it, recreate the app container so it reads the new settings:
 
 ```powershell
 $environmentFile = Join-Path $env:LOCALAPPDATA 'MedConnect\docker-tunnel.env'
 docker compose --project-name medconnect-tunnel --env-file $environmentFile -f .\compose.tunnel.yaml up -d --force-recreate app
 ```
 
-Caregiver alerts require a Twilio account and incur messaging charges. Add `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SMS_FROM`, `TWILIO_WHATSAPP_FROM`, and `TWILIO_WHATSAPP_CONTENT_SID` to the same private `docker-tunnel.env` before recreating the app. Use a Twilio SMS-capable sender and an approved WhatsApp sender. Submit and approve a WhatsApp template with these three variables: `{{1}}` the account holder's name, `{{2}}` the scheduled time, and `{{3}}` the 15-minute delay. A template body can be: `MedConnect: {{1}}'s medicine dose scheduled for {{2}} was not marked as taken {{3}} minutes after the alarm. Please check with them. Not emergency monitoring.` Configure the WhatsApp sender as `whatsapp:+<number>` and set the approved template's Content SID. Keep all Twilio credentials private.
+Users can manually send a message to a consenting recipient by SMS or email from the medicine alarms page. SMS requires `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and a Twilio SMS-capable `TWILIO_SMS_FROM` sender; email uses the configured Gmail sender and App Password above. Messages are not stored by MedConnect, but the delivery providers may process them, and charges may apply. Keep all provider credentials in the private environment file.
+
+Automatic caregiver alerts require a Twilio account and incur messaging charges. Add `TWILIO_WHATSAPP_FROM` and `TWILIO_WHATSAPP_CONTENT_SID` as well as the Twilio SMS settings before enabling automatic SMS/WhatsApp caregiver alerts. Use an approved WhatsApp sender. Submit and approve a WhatsApp template with these three variables: `{{1}}` the account holder's name, `{{2}}` the scheduled time, and `{{3}}` the 15-minute delay. A template body can be: `MedConnect: {{1}}'s medicine dose scheduled for {{2}} was not marked as taken {{3}} minutes after the alarm. Please check with them. Not emergency monitoring.` Configure the WhatsApp sender as `whatsapp:+<number>` and set the approved template's Content SID.
 
 The `start_medconnect_docker.ps1` supervisor runs the app container and restarts the Quick Tunnel after failures. The Windows Task Scheduler entry named **MedConnect Public Tunnel** is configured to run that script at sign-in and continue on battery.
 
@@ -48,7 +50,7 @@ cp .env.example .env
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-Edit `.env` and set your real `MEDCONNECT_DOMAIN`, `ACME_EMAIL`, `MEDCONNECT_SUPPORT_EMAIL`, and the generated `MEDCONNECT_SECRET_KEY`. Keep `.env` private and out of source control. The Gmail variables are optional, but password-reset email will not work until a Gmail sender and app password are configured.
+Edit `.env` and set your real `MEDCONNECT_DOMAIN`, `ACME_EMAIL`, `MEDCONNECT_SUPPORT_EMAIL`, and the generated `MEDCONNECT_SECRET_KEY`. Keep `.env` private and out of source control. Gmail settings enable password-reset and user-composed email. Manual SMS needs the Twilio SID, auth token, and SMS sender number in `.env`; do not put credentials in `.env.example`.
 
 On the Linux host, start the stack:
 
