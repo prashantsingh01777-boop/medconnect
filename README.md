@@ -2,6 +2,8 @@
 
 Curasync is a self-hosted medicine-schedule tracker with a limited, rule-based health-information assistant. It is not a medical provider, emergency dispatch service, or guaranteed reminder service.
 
+The bilingual assistant includes general self-care information for diabetes, arthritis, gastric acidity, menstrual cramps, and PCOS/PCOD. It does not diagnose, select personal medicines, or provide doses; medicine decisions and persistent or severe symptoms should be discussed with a clinician or pharmacist. Emergency warning signs in the tips require urgent medical care.
+
 ## Public deployment (Docker Compose)
 
 The production stack runs the app as a non-root container, keeps SQLite on a named persistent volume, and places Caddy in front for automatic HTTPS. It assumes a Linux server/VPS with a public IP address. This repository does **not** create a hosting account, register a domain, configure DNS, or deploy itself.

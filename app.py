@@ -162,6 +162,80 @@ HEALTH_TIPS = (
         """हल्की एलर्जी में, कारण पता हो तो उससे बचें और प्रभावित त्वचा धो लें। एंटीहिस्टामिन उपयुक्त है या नहीं, इसके लिए फार्मासिस्ट से पूछें।
 • साँस लेने में परेशानी या जीभ/गले में सूजन हो तो तुरंत आपातकालीन सहायता लें। तेज़ी से फैलते या ठीक न होने वाले चकत्ते पर डॉक्टर से सलाह लें।"""
     ),
+    (
+        (
+            "diabetes", "diabetic", "blood sugar", "madhumeh", "मधुमेह",
+            "डायबिटीज़", "डायबिटीज",
+        ),
+        """For diabetes:
+• Take prescribed medicines as directed; do not stop or change insulin or other doses based on this assistant. Follow your clinician's plan for meals and glucose checks.
+• Stay hydrated, keep follow-up appointments, and check your feet regularly for cuts or sores.
+• Contact your care team about repeated out-of-range readings or new symptoms. Get urgent help for fainting, confusion, trouble breathing, or repeated vomiting.""",
+        """डायबिटीज़ में:
+• डॉक्टर की लिखी दवाएँ निर्देशानुसार लें। इस सहायक की बात पर इंसुलिन या दवा बंद/कम-ज्यादा न करें। भोजन और शुगर जाँच के लिए अपनी डॉक्टर की योजना मानें।
+• पर्याप्त पानी पिएँ, नियमित जाँच कराएँ और पैरों में कट या घाव तो नहीं, रोज़ देखें।
+• बार-बार शुगर लक्ष्य से बाहर हो या नए लक्षण हों तो अपनी देखभाल टीम से संपर्क करें। बेहोशी, भ्रम, साँस में परेशानी या बार-बार उल्टी हो तो तुरंत सहायता लें।"""
+    ),
+    (
+        (
+            "arthritis", "joint pain", "गठिया", "जोड़ों का दर्द", "jodon ka dard",
+            "ghutne ka dard",
+        ),
+        """For arthritis or joint pain:
+• Gentle movement, pacing activities, and a wrapped warm or cool pack may help. Avoid putting ice or heat directly on skin.
+• The right treatment depends on the cause. Do not start, stop, or change pain medicines based on this assistant; ask a clinician or pharmacist, especially if you have stomach or kidney problems, take blood thinners, or may be pregnant.
+• Get urgent medical advice for a suddenly hot, red, swollen joint, especially with fever, or sudden severe pain.""",
+        """गठिया या जोड़ों के दर्द में:
+• हल्की गतिविधि, काम के बीच आराम और कपड़े में लपेटकर गर्म/ठंडी सिकाई से मदद मिल सकती है। बर्फ़ या गर्म चीज़ सीधे त्वचा पर न रखें।
+• सही इलाज कारण पर निर्भर करता है। इस सहायक की बात पर दर्द की दवा शुरू, बंद या कम-ज्यादा न करें। पेट/किडनी की समस्या, खून पतला करने वाली दवा, या गर्भावस्था की संभावना हो तो खास तौर पर डॉक्टर/फार्मासिस्ट से पूछें।
+• जोड़ अचानक गर्म, लाल और सूजा हो—खासकर बुखार के साथ—या अचानक तेज़ दर्द हो तो तुरंत चिकित्सा सलाह लें।"""
+    ),
+    (
+        (
+            "gastric attack", "gastric", "gastritis", "stomach burning",
+            "pet mein jalan", "पेट में जलन", "एसिडिटी", "गैस्ट्रिक",
+            "acidity", "heartburn", "acid reflux",
+        ),
+        """For occasional acidity or stomach burning:
+• Try smaller meals, note and avoid personal food triggers, and avoid lying down for 3–4 hours after eating.
+• An antacid or alginate may help occasional heartburn; follow its label and ask a pharmacist, as these products can affect other medicines. Frequent or persistent symptoms need a clinician's assessment.
+• Avoid taking ibuprofen or similar anti-inflammatory painkillers without medical advice if you have stomach irritation or an ulcer.
+• Get urgent help for severe or sudden abdominal/chest pain, trouble breathing or swallowing, vomiting blood, or black stools.""",
+        """कभी-कभी एसिडिटी या पेट में जलन होने पर:
+• थोड़ा-थोड़ा खाएँ, जिन चीज़ों से आपकी परेशानी बढ़ती है उन्हें नोट करके कम करें, और खाने के 3–4 घंटे तक न लेटें।
+• कभी-कभी होने वाली सीने की जलन में एंटासिड/एल्जिनेट मदद कर सकता है। पैकेट के निर्देश मानें और फार्मासिस्ट से पूछें—इनसे दूसरी दवाओं पर असर हो सकता है। बार-बार या लगातार लक्षण हों तो डॉक्टर से जाँच कराएँ।
+• पेट में जलन या अल्सर हो तो डॉक्टर की सलाह के बिना इबुप्रोफेन जैसी दर्द/सूजन की दवा न लें।
+• अचानक/तेज़ पेट या सीने का दर्द, साँस/निगलने में परेशानी, खून की उल्टी या काला मल हो तो तुरंत सहायता लें।"""
+    ),
+    (
+        (
+            "menstrual cramps", "period cramps", "period pain", "menstrual pain",
+            "dysmenorrhea", "mahavari dard", "mahwari dard", "period mein dard",
+            "पीरियड में दर्द", "माहवारी में दर्द", "मासिक धर्म में दर्द",
+        ),
+        """For menstrual cramps:
+• A wrapped warm pack, gentle movement, rest, and tracking your cycle may help.
+• A pharmacist or clinician can help decide whether an over-the-counter pain reliever is suitable. Ibuprofen and similar medicines can irritate the stomach and may be unsafe with ulcers, kidney problems, blood thinners, or pregnancy. Follow the label; do not combine similar painkillers.
+• Arrange medical advice if pain is severe, new, worsening, disrupts daily life, or comes with unusual bleeding. Seek urgent help for fainting, severe sudden pain, or possible pregnancy with pain or bleeding.""",
+        """माहवारी के दर्द/ऐंठन में:
+• कपड़े में लपेटकर गर्म सिकाई, हल्की गतिविधि, आराम और माहवारी का रिकॉर्ड रखने से मदद मिल सकती है।
+• बिना पर्चे की दर्द की दवा आपके लिए ठीक है या नहीं, फार्मासिस्ट/डॉक्टर से पूछें। इबुप्रोफेन जैसी दवाएँ पेट में जलन कर सकती हैं और अल्सर, किडनी की समस्या, खून पतला करने वाली दवा या गर्भावस्था में नुकसानदेह हो सकती हैं। पैकेट के निर्देश मानें; एक जैसी दर्द की दवाएँ साथ न लें।
+• दर्द तेज़, नया, बढ़ता हुआ, रोज़मर्रा के काम रोकने वाला हो या असामान्य रक्तस्राव हो तो डॉक्टर से सलाह लें। बेहोशी, अचानक तेज़ दर्द, या गर्भावस्था की संभावना के साथ दर्द/रक्तस्राव हो तो तुरंत सहायता लें।"""
+    ),
+    (
+        (
+            "pcos", "pcod", "polycystic ovary", "polycystic ovarian syndrome",
+            "पीसीओएस", "पीसीओडी", "अनियमित माहवारी", "अनियमित पीरियड",
+        ),
+        """For PCOS/PCOD:
+• PCOS needs an individual assessment; similar symptoms can have other causes. A clinician can discuss cycle changes, skin or hair symptoms, fertility goals, and related health checks.
+• Regular enjoyable activity, balanced meals, and sleep can support overall health. Avoid crash diets, unverified supplements, and hormone, fertility, or diabetes medicines unless prescribed for you.
+• Seek prompt care for very heavy bleeding, severe pelvic pain, fainting, or possible pregnancy with pain or bleeding.""",
+        """PCOS/PCOD में:
+• इसकी जाँच व्यक्ति के अनुसार होती है; ऐसे लक्षणों के दूसरे कारण भी हो सकते हैं। माहवारी में बदलाव, त्वचा/बालों के लक्षण, गर्भधारण की योजना और ज़रूरी स्वास्थ्य जाँच के लिए डॉक्टर से बात करें।
+• नियमित पसंदीदा गतिविधि, संतुलित भोजन और पर्याप्त नींद सामान्य स्वास्थ्य में मदद कर सकते हैं। बिना डॉक्टर की सलाह क्रैश डाइट, अप्रमाणित सप्लीमेंट, हार्मोन/फर्टिलिटी या डायबिटीज़ की दवा न लें।
+• बहुत अधिक रक्तस्राव, तेज़ पेल्विक दर्द, बेहोशी, या गर्भावस्था की संभावना के साथ दर्द/रक्तस्राव हो तो तुरंत चिकित्सा सहायता लें।"""
+    ),
 )
 
 MEDICINE_INFO = (
@@ -1734,7 +1808,7 @@ def ask_ai():
         )
 
     if not answers:
-        answer = 'I can share general tips for colds/cough/fever, sore throat, diarrhoea, constipation, heartburn, mild headaches, and allergies, plus basic information about paracetamol, ibuprofen, cetirizine, ORS, antacids, acid reducers, and antibiotics. For other conditions or personal medicine advice, contact a doctor or pharmacist.' if language == 'en' else 'मैं सर्दी/खाँसी/बुखार, गले के दर्द, दस्त, कब्ज़, सीने की जलन, हल्के सिरदर्द और एलर्जी पर सामान्य सुझाव दे सकता हूँ। पैरासिटामोल, इबुप्रोफेन, सेटिरिज़िन, ओआरएस, एंटासिड, एसिड कम करने वाली दवाओं और एंटीबायोटिक की सामान्य जानकारी भी दे सकता हूँ। अन्य समस्याओं या व्यक्तिगत दवा की सलाह के लिए डॉक्टर या फार्मासिस्ट से संपर्क करें।'
+        answer = 'I can share general tips for colds/cough/fever, sore throat, diarrhoea, constipation, heartburn, mild headaches, allergies, diabetes, arthritis, menstrual cramps, and PCOS/PCOD, plus basic information about paracetamol, ibuprofen, cetirizine, ORS, antacids, acid reducers, and antibiotics. For other conditions or personal medicine advice, contact a doctor or pharmacist.' if language == 'en' else 'मैं सर्दी/खाँसी/बुखार, गले के दर्द, दस्त, कब्ज़, सीने की जलन, हल्के सिरदर्द, एलर्जी, डायबिटीज़, गठिया, माहवारी के दर्द और PCOS/PCOD पर सामान्य सुझाव दे सकता हूँ। पैरासिटामोल, इबुप्रोफेन, सेटिरिज़िन, ओआरएस, एंटासिड, एसिड कम करने वाली दवाओं और एंटीबायोटिक की सामान्य जानकारी भी दे सकता हूँ। अन्य समस्याओं या व्यक्तिगत दवा की सलाह के लिए डॉक्टर या फार्मासिस्ट से संपर्क करें।'
     else:
         safety_note = (
             '\n\nThis is general self-care information, not a diagnosis or personal prescription. '

@@ -208,6 +208,33 @@ class ProductionReadinessTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn('under 2,000 characters', response.get_json()['answer'])
 
+    def test_assistant_covers_requested_conditions_with_safe_guidance(self):
+        examples = (
+            ('diabetes', 'en', 'do not stop or change insulin'),
+            ('arthritis', 'en', 'hot, red, swollen joint'),
+            ('gastric attack', 'en', 'vomiting blood'),
+            ('period cramps', 'en', 'irritate the stomach'),
+            ('PCOD', 'en', 'Avoid crash diets'),
+            ('डायबिटीज़', 'hi', 'इंसुलिन'),
+            ('गठिया', 'hi', 'जोड़'),
+            ('पेट में जलन', 'hi', 'खून की उल्टी'),
+            ('माहवारी में दर्द', 'hi', 'गर्भावस्था'),
+            ('पीसीओएस', 'hi', 'क्रैश डाइट'),
+        )
+        for question, language, expected_guidance in examples:
+            with self.subTest(question=question, language=language):
+                response = self.client.post(
+                    '/ask',
+                    json={'question': question, 'language': language},
+                )
+                self.assertEqual(response.status_code, 200)
+                answer = response.get_json()['answer']
+                self.assertIn(expected_guidance, answer)
+                self.assertIn(
+                    'not a diagnosis' if language == 'en' else 'नुस्खा नहीं',
+                    answer,
+                )
+
     def test_signup_rejects_non_string_email_without_server_error(self):
         response = self.client.post(
             '/api/signup',
