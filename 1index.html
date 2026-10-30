@@ -852,7 +852,7 @@
                 choosePillColorPhoto: 'Take or choose a pill photo',
                 pillColorWorking: 'Checking the visible color on this device...',
                 pillColorInvalidFile: 'Choose an image smaller than 10 MB.',
-                pillColorNoContrast: 'The pill could not be separated clearly from the background. Try a closer photo on a plain contrasting surface.',
+                pillColorNoContrast: 'A single pill or capsule shape could not be separated clearly from the background. Center one pill on a plain contrasting surface and try again.',
                 pillColorReadFailed: 'Could not read this photo. Try another image.',
                 pillColorResult: 'Likely visible color: {color}',
                 pillColorCaveat: 'Approximate color only. Lighting, shadows, and the background affect the result. This does not identify a medicine; verify the pill using its packaging or ask a pharmacist.',
@@ -1099,7 +1099,7 @@
                 choosePillColorPhoto: 'गोली की फोटो लें या चुनें',
                 pillColorWorking: 'इस डिवाइस पर दिखाई देने वाला रंग जाँचा जा रहा है...',
                 pillColorInvalidFile: '10 MB से छोटी इमेज चुनें।',
-                pillColorNoContrast: 'गोली को बैकग्राउंड से स्पष्ट रूप से अलग नहीं किया जा सका। सादी, विपरीत रंग की सतह पर पास से फोटो लें।',
+                pillColorNoContrast: 'एक गोली या कैप्सूल का आकार बैकग्राउंड से स्पष्ट रूप से अलग नहीं किया जा सका। एक गोली को बीच में रखकर सादी, विपरीत रंग की सतह पर फोटो लें।',
                 pillColorReadFailed: 'फोटो पढ़ी नहीं जा सकी। दूसरी इमेज आज़माएँ।',
                 pillColorResult: 'संभावित दिखाई देने वाला रंग: {color}',
                 pillColorCaveat: 'यह रंग का अनुमान है। रोशनी, परछाईं और बैकग्राउंड से नतीजा बदल सकता है। इससे दवा की पहचान नहीं होती; पैकेट देखकर या फार्मासिस्ट से पूछकर पुष्टि करें।',
@@ -2547,6 +2547,7 @@
             if (foregroundPixels < 25) return null;
 
             let largestComponent = null;
+            let secondLargestPillLikeComponent = 0;
             for (let start = 0; start < foreground.length; start += 1) {
                 if (!foreground[start]) continue;
                 foreground[start] = 0;
@@ -2554,12 +2555,20 @@
                 let queueStart = 0;
                 let queueEnd = 1;
                 const colorCounts = new Map();
+                let minGridX = gridWidth;
+                let maxGridX = 0;
+                let minGridY = gridHeight;
+                let maxGridY = 0;
 
                 while (queueStart < queueEnd) {
                     const pixel = componentQueue[queueStart];
                     queueStart += 1;
                     const gridX = pixel % gridWidth;
                     const gridY = Math.floor(pixel / gridWidth);
+                    minGridX = Math.min(minGridX, gridX);
+                    maxGridX = Math.max(maxGridX, gridX);
+                    minGridY = Math.min(minGridY, gridY);
+                    maxGridY = Math.max(maxGridY, gridY);
                     const x = left + gridX * step;
                     const y = top + gridY * step;
                     const colorIndex = (y * width + x) * 4;
@@ -2591,22 +2600,52 @@
                     }
                 }
 
-                if (!largestComponent || queueEnd > largestComponent.count) {
-                    const [category, dominant] = [...colorCounts.entries()]
-                        .sort((first, second) => second[1].count - first[1].count)[0];
-                    largestComponent = {
-                        count: queueEnd,
-                        category,
-                        rgb: [
-                            Math.round(dominant.red / dominant.count),
-                            Math.round(dominant.green / dominant.count),
-                            Math.round(dominant.blue / dominant.count)
-                        ]
-                    };
+                const componentWidth = maxGridX - minGridX + 1;
+                const componentHeight = maxGridY - minGridY + 1;
+                const boxArea = componentWidth * componentHeight;
+                const aspectRatio = Math.min(componentWidth, componentHeight)
+                    / Math.max(componentWidth, componentHeight);
+                const fillRatio = queueEnd / boxArea;
+                const centerX = (minGridX + maxGridX + 1) / (2 * gridWidth);
+                const centerY = (minGridY + maxGridY + 1) / (2 * gridHeight);
+                const areaRatio = queueEnd / foreground.length;
+                const looksPillShaped = queueEnd >= 25
+                    && areaRatio >= 0.0015
+                    && areaRatio <= 0.75
+                    && aspectRatio >= 0.32
+                    && fillRatio >= 0.48
+                    && fillRatio <= 0.92
+                    && Math.abs(centerX - 0.5) <= 0.3
+                    && Math.abs(centerY - 0.5) <= 0.3;
+                if (!looksPillShaped) continue;
+
+                const [category, dominant] = [...colorCounts.entries()]
+                    .sort((first, second) => second[1].count - first[1].count)[0];
+                const candidate = {
+                    count: queueEnd,
+                    category,
+                    rgb: [
+                        Math.round(dominant.red / dominant.count),
+                        Math.round(dominant.green / dominant.count),
+                        Math.round(dominant.blue / dominant.count)
+                    ]
+                };
+                if (!largestComponent || candidate.count > largestComponent.count) {
+                    secondLargestPillLikeComponent = largestComponent
+                        ? largestComponent.count
+                        : secondLargestPillLikeComponent;
+                    largestComponent = candidate;
+                } else {
+                    secondLargestPillLikeComponent = Math.max(
+                        secondLargestPillLikeComponent, candidate.count
+                    );
                 }
             }
 
-            if (!largestComponent || largestComponent.count < 25) return null;
+            if (!largestComponent
+                || secondLargestPillLikeComponent >= largestComponent.count * 0.35) {
+                return null;
+            }
             return {
                 category: largestComponent.category,
                 rgb: largestComponent.rgb
