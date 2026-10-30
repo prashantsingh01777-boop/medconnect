@@ -354,18 +354,6 @@
         .prescription-suggestion input { margin-bottom: 12px; }
         .prescription-suggestion button { width: auto; margin-bottom: 12px; padding: 12px; }
         .prescription-suggestion .prescription-row-status { grid-column: 1 / -1; margin: 0; }
-        .pill-color-scanner { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
-        .pill-color-result {
-            display: flex; align-items: center; gap: 12px; margin-top: 14px;
-            padding: 14px; border: 1px solid var(--border); border-radius: 12px;
-            background: #0d131e; color: var(--text-light);
-        }
-        .pill-color-swatch {
-            flex: 0 0 36px; width: 36px; height: 36px;
-            border: 2px solid rgba(255,255,255,.55); border-radius: 50%;
-            box-shadow: 0 0 0 1px rgba(0,0,0,.4);
-        }
-        .pill-color-result small { display: block; margin-top: 4px; color: var(--text-main); line-height: 1.5; }
         .caregiver-settings { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
         .caregiver-settings .card-title { margin-bottom: 12px; }
         .caregiver-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
@@ -542,22 +530,6 @@
                         <button class="auth-switch" id="scan-prescription-button" type="button" onclick="document.getElementById('prescription-image').click()" data-i18n="choosePrescriptionPhoto">Photo kheenchein ya upload karein</button>
                         <p class="prescription-status empty-state" id="prescription-status" role="status" aria-live="polite"></p>
                         <div class="prescription-suggestions" id="prescription-suggestions"></div>
-                    </section>
-                    <section class="pill-color-scanner" aria-labelledby="pill-color-title">
-                        <h3 class="card-title" id="pill-color-title" data-i18n="pillColorTitle">🎨 गोली/कैप्सूल का रंग पहचानें</h3>
-                        <p class="empty-state prescription-note" data-i18n="pillColorInstructions">
-                            एक गोली की पास से फोटो लें और उसे फ्रेम के बीच में रखें। सादा, विपरीत रंग की सतह पर तेज़ रोशनी में फोटो लें। रंग इसी डिवाइस पर जाँचा जाएगा; फोटो अपलोड नहीं होगी।
-                        </p>
-                        <input id="pill-color-image" type="file" accept="image/*" capture="environment" hidden>
-                        <button class="auth-switch" id="scan-pill-color-button" type="button" onclick="document.getElementById('pill-color-image').click()" data-i18n="choosePillColorPhoto">गोली की फोटो लें या चुनें</button>
-                        <p class="prescription-status empty-state" id="pill-color-status" role="status" aria-live="polite"></p>
-                        <div class="pill-color-result" id="pill-color-result" aria-live="polite" hidden>
-                            <span class="pill-color-swatch" id="pill-color-swatch" aria-hidden="true"></span>
-                            <div>
-                                <strong id="pill-color-name"></strong>
-                                <small id="pill-color-caveat"></small>
-                            </div>
-                        </div>
                     </section>
                     <section class="caregiver-settings" aria-labelledby="caregiver-title">
                         <h3 class="card-title" id="caregiver-title" data-i18n="caregiverTitle">👨‍👩‍👧‍👦 Caregiver alerts</h3>
@@ -759,20 +731,6 @@
                 prescriptionRowRequired: 'Enter the medicine name and confirm its time.',
                 prescriptionSaved: '"{name}" was added to your medicine alarms.',
                 prescriptionSaveFailed: 'Could not save this medicine: {error}',
-                pillColorTitle: '🎨 Detect a pill or capsule color',
-                pillColorInstructions: 'Take a close-up photo of one pill, centered in the frame, on a plain contrasting surface in bright light. Color is analyzed on this device; the photo is not uploaded.',
-                choosePillColorPhoto: 'Take or choose a pill photo',
-                pillColorWorking: 'Checking the visible color on this device...',
-                pillColorInvalidFile: 'Choose an image smaller than 10 MB.',
-                pillColorNoContrast: 'A single pill or capsule shape could not be separated clearly from the background. Center one pill on a plain contrasting surface and try again.',
-                pillColorReadFailed: 'Could not read this photo. Try another image.',
-                pillColorResult: 'Likely visible color: {color}',
-                pillColorCaveat: 'Approximate color only. Lighting, shadows, and the background affect the result. This does not identify a medicine; verify the pill using its packaging or ask a pharmacist.',
-                pillColorNames: {
-                    white: 'white', lightGray: 'light gray', gray: 'gray', darkGray: 'dark gray',
-                    black: 'black', beige: 'beige', brown: 'brown', orange: 'orange', yellow: 'yellow',
-                    green: 'green', cyan: 'cyan', blue: 'blue', purple: 'purple', pink: 'pink', red: 'red'
-                },
                 caregiverTitle: '👨‍👩‍👧‍👦 Caregiver alerts',
                 caregiverName: 'Family member/caregiver name',
                 caregiverPhone: 'Phone number with country code',
@@ -966,20 +924,6 @@
                 prescriptionRowRequired: 'दवा का नाम भरें और समय की पुष्टि करें।',
                 prescriptionSaved: '"{name}" दवा के अलार्म में जोड़ दी गई।',
                 prescriptionSaveFailed: 'दवा सेव नहीं हुई: {error}',
-                pillColorTitle: '🎨 गोली/कैप्सूल का रंग पहचानें',
-                pillColorInstructions: 'एक गोली की पास से फोटो लें और उसे फ्रेम के बीच में रखें। सादा, विपरीत रंग की सतह पर तेज़ रोशनी में फोटो लें। रंग इसी डिवाइस पर जाँचा जाएगा; फोटो अपलोड नहीं होगी।',
-                choosePillColorPhoto: 'गोली की फोटो लें या चुनें',
-                pillColorWorking: 'इस डिवाइस पर दिखाई देने वाला रंग जाँचा जा रहा है...',
-                pillColorInvalidFile: '10 MB से छोटी इमेज चुनें।',
-                pillColorNoContrast: 'एक गोली या कैप्सूल का आकार बैकग्राउंड से स्पष्ट रूप से अलग नहीं किया जा सका। एक गोली को बीच में रखकर सादी, विपरीत रंग की सतह पर फोटो लें।',
-                pillColorReadFailed: 'फोटो पढ़ी नहीं जा सकी। दूसरी इमेज आज़माएँ।',
-                pillColorResult: 'संभावित दिखाई देने वाला रंग: {color}',
-                pillColorCaveat: 'यह रंग का अनुमान है। रोशनी, परछाईं और बैकग्राउंड से नतीजा बदल सकता है। इससे दवा की पहचान नहीं होती; पैकेट देखकर या फार्मासिस्ट से पूछकर पुष्टि करें।',
-                pillColorNames: {
-                    white: 'सफेद', lightGray: 'हल्का स्लेटी', gray: 'स्लेटी', darkGray: 'गहरा स्लेटी',
-                    black: 'काला', beige: 'क्रीम', brown: 'भूरा', orange: 'नारंगी', yellow: 'पीला',
-                    green: 'हरा', cyan: 'फ़िरोज़ी', blue: 'नीला', purple: 'बैंगनी', pink: 'गुलाबी', red: 'लाल'
-                },
                 caregiverTitle: '👨‍👩‍👧‍👦 परिवार और caregiver अलर्ट',
                 caregiverName: 'परिवार के सदस्य/caregiver का नाम',
                 caregiverPhone: 'देश कोड सहित फोन नंबर',
@@ -1140,7 +1084,6 @@
             setReminder();
         });
         document.getElementById('prescription-image').addEventListener('change', scanPrescription);
-        document.getElementById('pill-color-image').addEventListener('change', scanPillColor);
         document.getElementById('caregiver-form').addEventListener('submit', (event) => {
             event.preventDefault();
             addCaregiver();
@@ -2113,282 +2056,6 @@
             } catch (error) {
                 console.error('Prescription OCR failed:', error);
                 status.textContent = t('prescriptionLoadFailed');
-            } finally {
-                button.disabled = false;
-            }
-        }
-
-        function pillColorCategory(red, green, blue) {
-            const max = Math.max(red, green, blue);
-            const min = Math.min(red, green, blue);
-            const delta = max - min;
-            const lightness = (max + min) / 510;
-            if (delta < 18) {
-                if (lightness >= 0.88) return 'white';
-                if (lightness >= 0.68) return 'lightGray';
-                if (lightness >= 0.36) return 'gray';
-                if (lightness >= 0.16) return 'darkGray';
-                return 'black';
-            }
-
-            const saturation = delta / (255 - Math.abs(max + min - 255));
-            let hue;
-            if (max === red) hue = ((green - blue) / delta) % 6;
-            else if (max === green) hue = (blue - red) / delta + 2;
-            else hue = (red - green) / delta + 4;
-            hue = (hue * 60 + 360) % 360;
-
-            if (hue < 48) {
-                if (lightness < 0.38) return 'brown';
-                if (lightness > 0.78 && saturation < 0.55) return 'beige';
-                return hue < 16 || hue >= 350 ? 'red' : 'orange';
-            }
-            if (hue < 78) return lightness > 0.78 && saturation < 0.55 ? 'beige' : 'yellow';
-            if (hue < 165) return 'green';
-            if (hue < 195) return 'cyan';
-            if (hue < 260) return 'blue';
-            if (hue < 300) return 'purple';
-            if (hue < 350 && lightness > 0.48) return 'pink';
-            return 'red';
-        }
-
-        function estimatePillColor(imageData, width, height) {
-            const pixels = imageData.data;
-            const borderColors = [[], [], []];
-            const borderSamples = [];
-            const borderWidth = Math.max(2, Math.floor(Math.min(width, height) * 0.08));
-            const sampleStep = 8;
-
-            for (let y = 0; y < height; y += sampleStep) {
-                for (let x = 0; x < width; x += sampleStep) {
-                    if (x >= borderWidth && x < width - borderWidth
-                        && y >= borderWidth && y < height - borderWidth) continue;
-                    const index = (y * width + x) * 4;
-                    if (pixels[index + 3] < 200) continue;
-                    borderColors[0].push(pixels[index]);
-                    borderColors[1].push(pixels[index + 1]);
-                    borderColors[2].push(pixels[index + 2]);
-                    borderSamples.push([
-                        pixels[index], pixels[index + 1], pixels[index + 2]
-                    ]);
-                }
-            }
-            if (!borderColors[0].length) return null;
-
-            const background = borderColors.map((channel) => {
-                const sortedChannel = channel.slice().sort((a, b) => a - b);
-                return sortedChannel[Math.floor(sortedChannel.length / 2)];
-            });
-            const colorDistance = (red, green, blue) => {
-                const redMean = (red + background[0]) / 2;
-                const redDifference = red - background[0];
-                const greenDifference = green - background[1];
-                const blueDifference = blue - background[2];
-                return Math.sqrt(
-                    (2 + redMean / 256) * redDifference ** 2
-                    + 4 * greenDifference ** 2
-                    + (2 + (255 - redMean) / 256) * blueDifference ** 2
-                );
-            };
-            const backgroundDistances = [];
-            for (const [red, green, blue] of borderSamples) {
-                backgroundDistances.push(colorDistance(red, green, blue));
-            }
-            backgroundDistances.sort((first, second) => first - second);
-            const backgroundNoise = backgroundDistances[
-                Math.floor((backgroundDistances.length - 1) * 0.9)
-            ];
-            const foregroundThreshold = Math.min(76, Math.max(26, backgroundNoise + 18));
-            const left = Math.floor(width * 0.05);
-            const right = Math.ceil(width * 0.95);
-            const top = Math.floor(height * 0.05);
-            const bottom = Math.ceil(height * 0.95);
-            const step = 2;
-            const gridWidth = Math.ceil((right - left) / step);
-            const gridHeight = Math.ceil((bottom - top) / step);
-            const foreground = new Uint8Array(gridWidth * gridHeight);
-            const componentQueue = new Uint32Array(foreground.length);
-            let foregroundPixels = 0;
-
-            for (let gridY = 0; gridY < gridHeight; gridY += 1) {
-                for (let gridX = 0; gridX < gridWidth; gridX += 1) {
-                    const x = left + gridX * step;
-                    const y = top + gridY * step;
-                    const index = (y * width + x) * 4;
-                    if (pixels[index + 3] < 200) continue;
-                    const red = pixels[index];
-                    const green = pixels[index + 1];
-                    const blue = pixels[index + 2];
-                    if (colorDistance(red, green, blue) <= foregroundThreshold) continue;
-                    foreground[gridY * gridWidth + gridX] = 1;
-                    foregroundPixels += 1;
-                }
-            }
-            if (foregroundPixels < 25) return null;
-
-            let largestComponent = null;
-            let secondLargestPillLikeComponent = 0;
-            for (let start = 0; start < foreground.length; start += 1) {
-                if (!foreground[start]) continue;
-                foreground[start] = 0;
-                componentQueue[0] = start;
-                let queueStart = 0;
-                let queueEnd = 1;
-                const colorCounts = new Map();
-                let minGridX = gridWidth;
-                let maxGridX = 0;
-                let minGridY = gridHeight;
-                let maxGridY = 0;
-
-                while (queueStart < queueEnd) {
-                    const pixel = componentQueue[queueStart];
-                    queueStart += 1;
-                    const gridX = pixel % gridWidth;
-                    const gridY = Math.floor(pixel / gridWidth);
-                    minGridX = Math.min(minGridX, gridX);
-                    maxGridX = Math.max(maxGridX, gridX);
-                    minGridY = Math.min(minGridY, gridY);
-                    maxGridY = Math.max(maxGridY, gridY);
-                    const x = left + gridX * step;
-                    const y = top + gridY * step;
-                    const colorIndex = (y * width + x) * 4;
-                    const red = pixels[colorIndex];
-                    const green = pixels[colorIndex + 1];
-                    const blue = pixels[colorIndex + 2];
-                    const category = pillColorCategory(red, green, blue);
-                    const entry = colorCounts.get(category) || {
-                        count: 0, red: 0, green: 0, blue: 0
-                    };
-                    entry.count += 1;
-                    entry.red += red;
-                    entry.green += green;
-                    entry.blue += blue;
-                    colorCounts.set(category, entry);
-
-                    for (let neighborY = Math.max(0, gridY - 1);
-                        neighborY <= Math.min(gridHeight - 1, gridY + 1);
-                        neighborY += 1) {
-                        for (let neighborX = Math.max(0, gridX - 1);
-                            neighborX <= Math.min(gridWidth - 1, gridX + 1);
-                            neighborX += 1) {
-                            const neighbor = neighborY * gridWidth + neighborX;
-                            if (!foreground[neighbor]) continue;
-                            foreground[neighbor] = 0;
-                            componentQueue[queueEnd] = neighbor;
-                            queueEnd += 1;
-                        }
-                    }
-                }
-
-                const componentWidth = maxGridX - minGridX + 1;
-                const componentHeight = maxGridY - minGridY + 1;
-                const boxArea = componentWidth * componentHeight;
-                const aspectRatio = Math.min(componentWidth, componentHeight)
-                    / Math.max(componentWidth, componentHeight);
-                const fillRatio = queueEnd / boxArea;
-                const centerX = (minGridX + maxGridX + 1) / (2 * gridWidth);
-                const centerY = (minGridY + maxGridY + 1) / (2 * gridHeight);
-                const areaRatio = queueEnd / foreground.length;
-                const looksPillShaped = queueEnd >= 25
-                    && areaRatio >= 0.0015
-                    && areaRatio <= 0.75
-                    && aspectRatio >= 0.32
-                    && fillRatio >= 0.48
-                    && fillRatio <= 0.92
-                    && Math.abs(centerX - 0.5) <= 0.3
-                    && Math.abs(centerY - 0.5) <= 0.3;
-                if (!looksPillShaped) continue;
-
-                const [category, dominant] = [...colorCounts.entries()]
-                    .sort((first, second) => second[1].count - first[1].count)[0];
-                const candidate = {
-                    count: queueEnd,
-                    category,
-                    rgb: [
-                        Math.round(dominant.red / dominant.count),
-                        Math.round(dominant.green / dominant.count),
-                        Math.round(dominant.blue / dominant.count)
-                    ]
-                };
-                if (!largestComponent || candidate.count > largestComponent.count) {
-                    secondLargestPillLikeComponent = largestComponent
-                        ? largestComponent.count
-                        : secondLargestPillLikeComponent;
-                    largestComponent = candidate;
-                } else {
-                    secondLargestPillLikeComponent = Math.max(
-                        secondLargestPillLikeComponent, candidate.count
-                    );
-                }
-            }
-
-            if (!largestComponent
-                || secondLargestPillLikeComponent >= largestComponent.count * 0.35) {
-                return null;
-            }
-            return {
-                category: largestComponent.category,
-                rgb: largestComponent.rgb
-            };
-        }
-
-        async function scanPillColor() {
-            const input = document.getElementById('pill-color-image');
-            const file = input.files[0];
-            const status = document.getElementById('pill-color-status');
-            const result = document.getElementById('pill-color-result');
-            input.value = '';
-            result.hidden = true;
-            if (!file) return;
-            if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
-                status.textContent = t('pillColorInvalidFile');
-                return;
-            }
-
-            const button = document.getElementById('scan-pill-color-button');
-            button.disabled = true;
-            status.textContent = t('pillColorWorking');
-            try {
-                const image = await createImageBitmap(file, {
-                    resizeWidth: 800,
-                    resizeHeight: 800,
-                    resizeQuality: 'high'
-                });
-                try {
-                    const width = image.width;
-                    const height = image.height;
-                    const canvas = document.createElement('canvas');
-                    canvas.width = width;
-                    canvas.height = height;
-                    const context = canvas.getContext('2d', { willReadFrequently: true });
-                    if (!context) throw new Error('Canvas image analysis is unavailable');
-                    context.drawImage(image, 0, 0, width, height);
-                    const estimate = estimatePillColor(
-                        context.getImageData(0, 0, width, height), width, height
-                    );
-                    if (!estimate) {
-                        status.textContent = t('pillColorNoContrast');
-                        return;
-                    }
-
-                    const translations = TRANSLATIONS[
-                        languageSelect.value === 'en' ? 'en' : 'hi'
-                    ].pillColorNames;
-                    const colorName = translations[estimate.category];
-                    document.getElementById('pill-color-name').textContent =
-                        t('pillColorResult', { color: colorName });
-                    document.getElementById('pill-color-swatch').style.backgroundColor =
-                        `rgb(${estimate.rgb.join(', ')})`;
-                    document.getElementById('pill-color-caveat').textContent =
-                        t('pillColorCaveat');
-                    result.hidden = false;
-                    status.textContent = '';
-                } finally {
-                    image.close();
-                }
-            } catch (error) {
-                console.error('Pill color analysis failed:', error);
-                status.textContent = t('pillColorReadFailed');
             } finally {
                 button.disabled = false;
             }
