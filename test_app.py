@@ -52,13 +52,13 @@ class ProductionReadinessTests(unittest.TestCase):
         self.assertEqual(privacy.status_code, 200)
         self.assertIn(b'Information processed', privacy.data)
         self.assertEqual(terms.status_code, 200)
-        self.assertIn(b'does not contact emergency services automatically', terms.data)
+        self.assertIn(b'cannot dispatch or verify an ambulance', terms.data)
         self.assertEqual(health.get_json(), {'status': 'ok'})
         self.assertEqual(health.headers['X-Content-Type-Options'], 'nosniff')
         self.assertEqual(health.headers['X-Frame-Options'], 'DENY')
         self.assertEqual(
             health.headers['Permissions-Policy'],
-            'camera=(self), geolocation=(self), microphone=(self)',
+            'camera=(self), microphone=(self)',
         )
 
     def test_signup_requires_policy_acceptance_and_records_timestamp(self):
@@ -387,184 +387,29 @@ class ProductionReadinessTests(unittest.TestCase):
         self.assertTrue(response.data.startswith(b'%PDF-'))
         self.assertIn('attachment;', response.headers['Content-Disposition'])
 
-    def test_panic_sharing_requires_confirmation_and_sends_only_current_location(self):
-        self.assertEqual(self.client.get('/api/panic/status').status_code, 401)
+    def test_emergency_location_alert_routes_and_legacy_data_are_removed(self):
         self.assertEqual(self.signup().status_code, 201)
-        self.assertEqual(self.add_caregiver().status_code, 201)
-        provider_settings = {
-            'TWILIO_ACCOUNT_SID': 'AC' + '1' * 32,
-            'TWILIO_AUTH_TOKEN': 'test-token',
-            'TWILIO_SMS_FROM': '+14155550100',
-            'TWILIO_WHATSAPP_FROM': 'whatsapp:+14155550100',
-            'TWILIO_WHATSAPP_PANIC_CONTENT_SID': 'HX' + '2' * 32,
-        }
-        missing_consent = self.client.post(
-            '/api/panic/start',
-            json={
-                'duration_minutes': 30,
-                'location_consent_confirmed': False,
-                'latitude': 28.6139,
-                'longitude': 77.2090,
-            },
-        )
-        self.assertEqual(missing_consent.status_code, 400)
-        missing_user_consent = self.client.post(
-            '/api/panic/start',
-            json={
-                'duration_minutes': 30,
-                'location_consent_confirmed': True,
-                'user_location_consent_confirmed': False,
-                'latitude': 28.6139,
-                'longitude': 77.2090,
-            },
-        )
-        self.assertEqual(missing_user_consent.status_code, 400)
+        self.assertEqual(self.client.get('/api/panic/status').status_code, 404)
         self.assertEqual(
-            self.client.post(
-                '/api/panic/start',
-                json={
-                    'duration_minutes': 30,
-                    'location_consent_confirmed': True,
-                    'user_location_consent_confirmed': True,
-                    'latitude': 91,
-                    'longitude': 77.2090,
-                },
-            ).status_code,
-            400,
+            self.client.post('/api/panic/start', json={}).status_code,
+            404,
         )
+        self.assertEqual(
+            self.client.post('/api/panic/1/location', json={}).status_code,
+            404,
+        )
+        self.assertEqual(self.client.post('/api/panic/1/stop').status_code, 404)
 
-        with patch.dict(os.environ, provider_settings):
-            with patch.object(
-                medconnect, 'dispatch_panic_location',
-                return_value={'accepted_by_provider': 2, 'failed': 0},
-            ) as dispatch:
-                with patch.object(
-                    medconnect,
-                    'utc_now',
-                    return_value=datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc),
-                ):
-                    started = self.client.post(
-                        '/api/panic/start',
-                        json={
-                            'duration_minutes': 30,
-                            'location_consent_confirmed': True,
-                            'user_location_consent_confirmed': True,
-                            'latitude': 28.6139,
-                            'longitude': 77.2090,
-                        },
-                    )
-                    session_id = started.get_json()['active_session']['id']
-                    self.assertEqual(
-                        self.client.post(
-                            f'/api/panic/{session_id}/location',
-                            json={'latitude': 28.6, 'longitude': 77.2},
-                        ).status_code,
-                        429,
-                    )
-                with patch.object(
-                    medconnect,
-                    'utc_now',
-                    return_value=datetime(2026, 1, 1, 0, 15, tzinfo=timezone.utc),
-                ):
-                    update = self.client.post(
-                        f'/api/panic/{session_id}/location',
-                        json={'latitude': 28.6, 'longitude': 77.2},
-                    )
-                self.assertEqual(update.status_code, 200)
-                self.assertEqual(
-                    self.client.post(f'/api/panic/{session_id}/stop').status_code,
-                    200,
-                )
-                self.assertEqual(
-                    self.client.post(
-                        f'/api/panic/{session_id}/location',
-                        json={'latitude': 28.6, 'longitude': 77.2},
-                    ).status_code,
-                    404,
-                )
-
-        self.assertEqual(started.status_code, 201)
-        self.assertEqual(dispatch.call_count, 2)
         with medconnect.app.app_context():
-            columns = {
-                row['name'] for row in medconnect.get_db().execute(
-                    'PRAGMA table_info(panic_sessions)'
-                ).fetchall()
-            }
-            self.assertNotIn('latitude', columns)
-            self.assertNotIn('longitude', columns)
-            self.assertEqual(
-                medconnect.get_db().execute(
-                    "SELECT status FROM panic_sessions WHERE id = ?",
-                    (session_id,),
-                ).fetchone()['status'],
-                'stopped',
+            medconnect.get_db().execute(
+                'CREATE TABLE panic_sessions (id INTEGER PRIMARY KEY)'
             )
-
-    def test_panic_start_fails_explicitly_when_messaging_is_not_configured(self):
-        self.assertEqual(self.signup().status_code, 201)
-        self.assertEqual(self.add_caregiver().status_code, 201)
-        response = self.client.post(
-            '/api/panic/start',
-            json={
-                'duration_minutes': 60,
-                'location_consent_confirmed': True,
-                'user_location_consent_confirmed': True,
-                'latitude': 28.6139,
-                'longitude': 77.2090,
-            },
-        )
-        self.assertEqual(response.status_code, 503)
-        self.assertIn('Emergency messaging', response.get_json()['error'])
-        self.assertIsNone(self.client.get('/api/panic/status').get_json()['active_session'])
-
-    def test_twilio_panic_whatsapp_request_uses_location_template(self):
-        provider_settings = {
-            'TWILIO_ACCOUNT_SID': 'AC' + '1' * 32,
-            'TWILIO_AUTH_TOKEN': 'test-token',
-            'TWILIO_SMS_FROM': '+14155550100',
-            'TWILIO_WHATSAPP_FROM': 'whatsapp:+14155550100',
-            'TWILIO_WHATSAPP_PANIC_CONTENT_SID': 'HX' + '2' * 32,
-        }
-
-        class FakeResponse:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *exception_details):
-                return not any(exception_details)
-
-            def read(self):
-                return b'{"sid":"SM123"}'
-
-        with patch.dict(os.environ, provider_settings):
-            with patch.object(
-                medconnect.urllib.request,
-                'urlopen',
-                return_value=FakeResponse(),
-            ) as urlopen:
-                medconnect.send_twilio_panic_alert(
-                    '+919876543210',
-                    'whatsapp',
-                    'Test Person',
-                    'https://maps.google.com/?q=28.613900,77.209000',
-                    60,
-                )
-
-        payload = parse_qs(urlopen.call_args.args[0].data.decode())
-        self.assertEqual(payload['To'], ['whatsapp:+919876543210'])
-        self.assertEqual(
-            payload['ContentSid'],
-            [provider_settings['TWILIO_WHATSAPP_PANIC_CONTENT_SID']],
-        )
-        self.assertEqual(
-            medconnect.json.loads(payload['ContentVariables'][0]),
-            {
-                '1': 'Test Person',
-                '2': 'https://maps.google.com/?q=28.613900,77.209000',
-                '3': '60',
-            },
-        )
+        medconnect.initialize_db()
+        with medconnect.app.app_context():
+            table = medconnect.get_db().execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'panic_sessions'"
+            ).fetchone()
+        self.assertIsNone(table)
 
     def test_due_caregiver_alerts_send_both_channels_once_per_contact(self):
         self.assertEqual(self.signup().status_code, 201)

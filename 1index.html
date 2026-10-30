@@ -372,33 +372,6 @@
         .caregiver-form .policy-consent, .caregiver-form button { grid-column: 1 / -1; }
         .caregiver-status { min-height: 24px; margin: 0 0 12px; line-height: 1.6; }
         .caregiver-list { display: grid; gap: 10px; }
-        .panic-card {
-            margin: 0 0 26px; padding: 18px; border: 1px solid #7f1d1d;
-            border-radius: 16px; background: linear-gradient(135deg, #35161d, #17131b);
-        }
-        .panic-card h3 { margin: 0 0 10px; color: #fecaca; }
-        .panic-card p { margin: 0 0 14px; line-height: 1.6; }
-        .panic-start-button, .panic-stop-button {
-            width: auto; min-width: 190px; background: #dc2626; color: #fff;
-        }
-        .panic-start-button:hover, .panic-stop-button:hover { background: #b91c1c; }
-        .panic-status { margin-top: 12px !important; color: #fecaca; }
-        .panic-active { color: #86efac !important; }
-        .panic-dialog {
-            width: min(460px, calc(100vw - 40px)); color: var(--text-main);
-            background: var(--card-bg); border: 1px solid var(--border); border-radius: 18px;
-        }
-        .panic-dialog::backdrop { background: rgba(2, 6, 23, .78); }
-        .panic-dialog h3 { color: var(--text-light); }
-        .panic-recipient-list { display: grid; gap: 6px; margin: 8px 0 14px; padding-left: 22px; }
-        .panic-recipient-list li { overflow-wrap: anywhere; }
-        .panic-consent-note { margin: 12px 0 !important; }
-        .panic-dialog .policy-consent { display: flex; align-items: flex-start; gap: 10px; }
-        .panic-dialog .policy-consent input { flex: 0 0 auto; width: auto; margin: 3px 0 0; }
-        .panic-dialog .policy-consent label { margin: 0; color: var(--text-main); text-transform: none; line-height: 1.6; }
-        .panic-dialog-actions { display: flex; gap: 12px; }
-        .panic-dialog-actions button { width: auto; }
-        .panic-dialog-actions .secondary { color: var(--text-light); background: #334155; }
         .taken-badge { color: #86efac; font-size: 13px; white-space: nowrap; }
         .missed-badge { color: #fca5a5; font-size: 13px; white-space: nowrap; }
         .empty-state { color: var(--text-main); margin: 0; line-height: 1.6; }
@@ -460,8 +433,6 @@
             .prescription-suggestion .prescription-row-status { grid-column: auto; }
             .caregiver-form { grid-template-columns: 1fr; }
             .caregiver-form .policy-consent, .caregiver-form button { grid-column: auto; }
-            .panic-dialog-actions { flex-direction: column; }
-            .panic-dialog-actions button { width: 100%; }
         }
     </style>
 </head>
@@ -551,43 +522,6 @@
             <section class="dashboard-panel" id="alarms-panel" aria-label="Dawa ke alarms" data-i18n-aria-label="alarmsTab">
                 <div class="card">
                     <h2 class="card-title" data-i18n="myAlarms">⏰ Meri dawaon ke alarms</h2>
-                    <section class="panic-card" aria-labelledby="panic-title">
-                        <h3 id="panic-title" data-i18n="panicTitle">🆘 Emergency location alert</h3>
-                        <p class="empty-state" data-i18n="panicIntro">Send your current location to your saved caregivers by SMS and WhatsApp, then share a new location every 15 minutes until your chosen duration ends or you stop sharing. This requires GPS permission, an open app, and configured messaging. It is not an emergency service.</p>
-                        <button class="panic-start-button" id="panic-start-button" type="button" onclick="openPanicConfirmation()" data-i18n="panicStart">🆘 Share my location</button>
-                        <button class="panic-stop-button" id="panic-stop-button" type="button" onclick="stopPanicSharing()" data-i18n="panicStop" hidden>Stop sharing</button>
-                        <p class="empty-state panic-status" id="panic-status" role="status" aria-live="polite"></p>
-                    </section>
-                    <dialog class="panic-dialog" id="panic-confirmation">
-                        <form id="panic-confirm-form">
-                            <h3 data-i18n="panicConfirmTitle">Confirm emergency location sharing</h3>
-                            <p class="empty-state" data-i18n="panicConfirmIntro">After you confirm, your browser may ask for location permission. If allowed, your current location will be sent to these caregivers by SMS and WhatsApp, then updated every 15 minutes. You can stop sharing at any time. Messaging charges may apply.</p>
-                            <strong data-i18n="panicRecipients">Location will be shared with:</strong>
-                            <ul class="panic-recipient-list" id="panic-recipient-list"></ul>
-                            <label for="panic-duration" data-i18n="panicDuration">Choose how long to share</label>
-                            <select id="panic-duration" required>
-                                <option value="15" data-i18n="panicDuration15">15 minutes</option>
-                                <option value="30" data-i18n="panicDuration30">30 minutes</option>
-                                <option value="60" selected data-i18n="panicDuration60">1 hour</option>
-                                <option value="120" data-i18n="panicDuration120">2 hours</option>
-                                <option value="240" data-i18n="panicDuration240">4 hours</option>
-                                <option value="480" data-i18n="panicDuration480">8 hours</option>
-                                <option value="1440" data-i18n="panicDuration1440">24 hours</option>
-                            </select>
-                            <div class="policy-consent panic-consent-note">
-                                <input id="panic-user-location-consent" type="checkbox" required>
-                                <label for="panic-user-location-consent" data-i18n="panicUserLocationConsent">I authorize this app to access my current location and send it to the caregivers listed above for the selected duration. I can stop sharing at any time.</label>
-                            </div>
-                            <div class="policy-consent">
-                                <input id="panic-recipient-consent" type="checkbox" required>
-                                <label for="panic-recipient-consent" data-i18n="panicRecipientConsent">I confirm that every saved caregiver agreed to receive my live emergency location.</label>
-                            </div>
-                            <div class="panic-dialog-actions">
-                                <button class="secondary" type="button" onclick="closePanicConfirmation()" data-i18n="cancel">Cancel</button>
-                                <button id="panic-confirm-button" type="submit" data-i18n="panicConfirmSend">Confirm and send location</button>
-                            </div>
-                        </form>
-                    </dialog>
                     <form class="medicine-form" id="medicine-form">
                         <div>
                             <label for="med-name" data-i18n="medicineName">Dawa ka naam</label>
@@ -757,7 +691,6 @@
         const reminderTimers = new Map();
         const doseReminderAlerts = new Set();
         const missedDoseAlerts = new Set();
-        const PANIC_LOCATION_INTERVAL_MS = 15 * 60 * 1000;
         const DOSE_FOLLOW_UP_DELAY_MS = 7 * 60 * 1000;
         const MISSED_DOSE_DELAY_MS = 15 * 60 * 1000;
         const LANGUAGE_STORAGE_KEY = 'medconnectAssistantLanguage';
@@ -809,40 +742,6 @@
                 accountDeleted: 'Your account and app data have been permanently deleted.',
                 deleteAccountFailed: 'Could not delete the account: {error}',
                 myAlarms: '⏰ My medicine alarms',
-                panicTitle: '🆘 Emergency location alert',
-                panicIntro: 'Send your current location to your saved caregivers by SMS and WhatsApp, then share a new location every 15 minutes until your chosen duration ends or you stop sharing. This requires GPS permission, an open app, and configured messaging. It is not an emergency service.',
-                panicStart: '🆘 Share my location',
-                panicStop: 'Stop sharing',
-                panicUnavailable: 'Emergency messaging is unavailable. Call your local emergency service directly if you need urgent help.',
-                panicAddCaregiver: 'Add a caregiver contact before starting an alert.',
-                panicActive: 'Location sharing is active until {time}. Keep this page open; updates are sent every 15 minutes.',
-                panicConfirmTitle: 'Confirm emergency location sharing',
-                panicConfirmIntro: 'After you confirm, your browser may ask for location permission. If allowed, your current location will be sent to these caregivers by SMS and WhatsApp, then updated every 15 minutes. You can stop sharing at any time. Messaging charges may apply.',
-                panicRecipients: 'Location will be shared with:',
-                panicDuration: 'Choose how long to share',
-                panicDuration15: '15 minutes',
-                panicDuration30: '30 minutes',
-                panicDuration60: '1 hour',
-                panicDuration120: '2 hours',
-                panicDuration240: '4 hours',
-                panicDuration480: '8 hours',
-                panicDuration1440: '24 hours',
-                panicUserLocationConsent: 'I authorize this app to access my current location and send it to the caregivers listed above for the selected duration. I can stop sharing at any time.',
-                panicRecipientConsent: 'I confirm that every saved caregiver agreed to receive my emergency location updates.',
-                panicConfirmSend: 'Confirm and send location',
-                panicLocating: 'Getting your current GPS location...',
-                panicStarted: 'Emergency location alert started. The messaging provider accepted {count} message(s); delivery is not guaranteed.',
-                panicPartiallySent: 'Sharing is active, but only {count} message(s) were accepted by the messaging provider. Check with your caregivers.',
-                panicStopped: 'Emergency location sharing stopped.',
-                panicStopFailed: 'Could not stop sharing: {error}',
-                panicFailed: 'Could not start location sharing: {error}',
-                panicUpdateFailed: 'Could not send a location update: {error}',
-                panicUpdateSent: 'Location update sent to the messaging provider.',
-                panicNoGeolocation: 'This browser cannot access GPS location.',
-                panicLocationDenied: 'Location permission was denied. Allow location access and try again.',
-                panicSecureContext: 'Location access requires a secure HTTPS connection. Open this app using its secure website address and try again.',
-                panicLocationUnavailable: 'Your current location is unavailable. Move to an area with GPS or network coverage and try again.',
-                panicLocationTimeout: 'Getting your GPS location timed out. Try again.',
                 cancel: 'Cancel',
                 prescriptionTitle: '📷 Prescription scanner',
                 prescriptionPrivacy: 'The photo is read on this device; it is not uploaded to the server. OCR can be wrong—check every medicine name and time against your doctor’s prescription before saving.',
@@ -1001,16 +900,6 @@
                     'Dono channels par alert bhejne se pehle caregiver ki sahmati zaroori hai.': 'The caregiver must consent to alerts on both channels.',
                     'Yeh caregiver number pehle se joda hua hai.': 'This caregiver number is already added.',
                     'Caregiver numbers ki maximum limit poori ho gayi hai.': 'The maximum number of caregiver contacts has been reached.',
-                    'Stop location sharing before changing caregiver contacts.': 'Stop location sharing before changing caregiver contacts.',
-                    'Emergency messaging is not available right now.': 'Emergency messaging is not available right now.',
-                    'Add a caregiver contact before starting location sharing.': 'Add a caregiver contact before starting location sharing.',
-                    'Confirm that your caregivers agreed to receive location alerts.': 'Confirm that your caregivers agreed to receive location alerts.',
-                    'A valid current location is required.': 'A valid current location is required.',
-                    'Sharing duration must be from 15 minutes to 24 hours in 15-minute steps.': 'Choose a sharing duration from 15 minutes to 24 hours.',
-                    'Location sharing is already active.': 'Location sharing is already active.',
-                    'No active location-sharing session was found.': 'No active location-sharing session was found.',
-                    'Location sharing has expired.': 'Location sharing has expired.',
-                    'Location updates are limited to once every 15 minutes.': 'Location updates are limited to once every 15 minutes.'
                 }
             },
             hi: {
@@ -1060,40 +949,6 @@
                 accountDeleted: 'आपका खाता और ऐप का डेटा स्थायी रूप से मिटा दिया गया है।',
                 deleteAccountFailed: 'खाता नहीं मिटा: {error}',
                 myAlarms: '⏰ मेरी दवाओं के अलार्म',
-                panicTitle: '🆘 आपातकालीन लोकेशन अलर्ट',
-                panicIntro: 'आपकी मौजूदा लोकेशन सभी सहेजे गए caregivers को SMS और WhatsApp से भेजी जाएगी। चुनी हुई अवधि खत्म होने या आप बंद करने तक हर 15 मिनट में नई लोकेशन भेजी जाएगी। इसके लिए GPS अनुमति, खुला app और messaging setup ज़रूरी है। यह emergency सेवा नहीं है।',
-                panicStart: '🆘 मेरी लोकेशन साझा करें',
-                panicStop: 'लोकेशन साझा करना बंद करें',
-                panicUnavailable: 'Emergency संदेश अभी उपलब्ध नहीं हैं। तुरंत मदद चाहिए तो अपनी स्थानीय emergency सेवा को सीधे कॉल करें।',
-                panicAddCaregiver: 'अलर्ट शुरू करने से पहले caregiver का नंबर जोड़ें।',
-                panicActive: 'लोकेशन साझा हो रही है; यह {time} तक जारी रहेगी। यह पेज खुला रखें; हर 15 मिनट में अपडेट भेजे जाते हैं।',
-                panicConfirmTitle: 'Emergency लोकेशन साझा करने की पुष्टि करें',
-                panicConfirmIntro: 'पुष्टि के बाद browser लोकेशन की अनुमति माँग सकता है। अनुमति देने पर आपकी मौजूदा लोकेशन नीचे दिए caregivers को SMS और WhatsApp से भेजी जाएगी और हर 15 मिनट में अपडेट होगी। आप कभी भी sharing रोक सकते हैं। संदेश भेजने का शुल्क लग सकता है।',
-                panicRecipients: 'लोकेशन इन लोगों के साथ साझा होगी:',
-                panicDuration: 'लोकेशन साझा करने की अवधि चुनें',
-                panicDuration15: '15 मिनट',
-                panicDuration30: '30 मिनट',
-                panicDuration60: '1 घंटा',
-                panicDuration120: '2 घंटे',
-                panicDuration240: '4 घंटे',
-                panicDuration480: '8 घंटे',
-                panicDuration1440: '24 घंटे',
-                panicUserLocationConsent: 'मैं इस ऐप को अपनी मौजूदा लोकेशन लेने और चुनी हुई अवधि तक ऊपर दिए caregivers को भेजने की अनुमति देता/देती हूँ। मैं कभी भी sharing रोक सकता/सकती हूँ।',
-                panicRecipientConsent: 'मैं पुष्टि करता/करती हूँ कि सभी सहेजे गए caregivers मेरी emergency लोकेशन पाने के लिए सहमत हैं।',
-                panicConfirmSend: 'पुष्टि करके लोकेशन भेजें',
-                panicLocating: 'आपकी मौजूदा GPS लोकेशन ली जा रही है...',
-                panicStarted: 'Emergency लोकेशन अलर्ट शुरू हुआ। Messaging provider ने {count} संदेश स्वीकार किए; पहुँचने की गारंटी नहीं है।',
-                panicPartiallySent: 'लोकेशन साझा हो रही है, लेकिन provider ने केवल {count} संदेश स्वीकार किए। अपने caregivers से पुष्टि करें।',
-                panicStopped: 'Emergency लोकेशन साझा करना बंद हो गया।',
-                panicStopFailed: 'लोकेशन साझा करना बंद नहीं हो सका: {error}',
-                panicFailed: 'लोकेशन साझा करना शुरू नहीं हो सका: {error}',
-                panicUpdateFailed: 'लोकेशन अपडेट नहीं भेजा जा सका: {error}',
-                panicUpdateSent: 'लोकेशन अपडेट messaging provider को भेज दिया गया।',
-                panicNoGeolocation: 'इस browser में GPS लोकेशन उपलब्ध नहीं है।',
-                panicLocationDenied: 'लोकेशन की अनुमति नहीं मिली। Browser में अनुमति देकर फिर कोशिश करें।',
-                panicSecureContext: 'लोकेशन के लिए सुरक्षित HTTPS कनेक्शन ज़रूरी है। ऐप को उसके सुरक्षित वेबसाइट पते से खोलकर फिर कोशिश करें।',
-                panicLocationUnavailable: 'मौजूदा लोकेशन नहीं मिली। GPS या network coverage वाली जगह पर फिर कोशिश करें।',
-                panicLocationTimeout: 'GPS लोकेशन मिलने में समय समाप्त हुआ। फिर कोशिश करें।',
                 cancel: 'रद्द करें',
                 prescriptionTitle: '📷 पर्चे का स्कैनर',
                 prescriptionPrivacy: 'फोटो इसी डिवाइस पर OCR से पढ़ी जाएगी; सर्वर पर अपलोड नहीं होगी। OCR गलत हो सकता है—सेव करने से पहले डॉक्टर के पर्चे से दवा का नाम और समय मिलाएँ।',
@@ -1252,16 +1107,6 @@
                     'Dono channels par alert bhejne se pehle caregiver ki sahmati zaroori hai.': 'दोनों माध्यमों पर alert भेजने से पहले caregiver की सहमति ज़रूरी है।',
                     'Yeh caregiver number pehle se joda hua hai.': 'यह caregiver नंबर पहले से जोड़ा गया है।',
                     'Caregiver numbers ki maximum limit poori ho gayi hai.': 'अधिकतम caregiver नंबर की सीमा पूरी हो गई है।',
-                    'Stop location sharing before changing caregiver contacts.': 'Caregiver नंबर बदलने से पहले लोकेशन साझा करना बंद करें।',
-                    'Emergency messaging is not available right now.': 'Emergency संदेश अभी उपलब्ध नहीं हैं। तुरंत मदद चाहिए तो स्थानीय emergency सेवा को कॉल करें।',
-                    'Add a caregiver contact before starting location sharing.': 'लोकेशन साझा करने से पहले caregiver का नंबर जोड़ें।',
-                    'Confirm that your caregivers agreed to receive location alerts.': 'पुष्टि करें कि caregivers लोकेशन alerts पाने के लिए सहमत हैं।',
-                    'A valid current location is required.': 'मौजूदा GPS लोकेशन आवश्यक है।',
-                    'Sharing duration must be from 15 minutes to 24 hours in 15-minute steps.': '15 मिनट से 24 घंटे तक की अवधि चुनें।',
-                    'Location sharing is already active.': 'लोकेशन पहले से साझा हो रही है।',
-                    'No active location-sharing session was found.': 'कोई सक्रिय लोकेशन साझा सत्र नहीं मिला।',
-                    'Location sharing has expired.': 'लोकेशन साझा करने की अवधि समाप्त हो गई।',
-                    'Location updates are limited to once every 15 minutes.': 'लोकेशन अपडेट हर 15 मिनट में एक बार भेजे जा सकते हैं।'
                 }
             }
         };
@@ -1272,10 +1117,6 @@
         let speechRecognition = null;
         let speechRecognitionActive = false;
         let caregiverContacts = [];
-        let panicSession = null;
-        let panicUpdateTimer = null;
-        let panicConfigured = false;
-        let panicContactCount = 0;
         let ocrLibraryPromise = null;
 
         document.getElementById('signup-form').addEventListener('submit', (event) => {
@@ -1303,13 +1144,6 @@
         document.getElementById('caregiver-form').addEventListener('submit', (event) => {
             event.preventDefault();
             addCaregiver();
-        });
-        document.getElementById('panic-confirm-form').addEventListener('submit', (event) => {
-            event.preventDefault();
-            if (!event.currentTarget.reportValidity()) return;
-            const durationMinutes = Number(document.getElementById('panic-duration').value);
-            closePanicConfirmation();
-            startPanicSharing(durationMinutes);
         });
         document.getElementById('assistant-language').addEventListener('change', () => {
             try {
@@ -1502,218 +1336,6 @@
             });
         }
 
-        function renderPanicRecipients() {
-            const list = document.getElementById('panic-recipient-list');
-            list.replaceChildren();
-            caregiverContacts.forEach((caregiver) => {
-                const item = document.createElement('li');
-                item.textContent = `${caregiver.name} (${caregiver.phone_e164})`;
-                list.append(item);
-            });
-        }
-
-        function renderPanicState(message = '') {
-            const startButton = document.getElementById('panic-start-button');
-            const stopButton = document.getElementById('panic-stop-button');
-            const status = document.getElementById('panic-status');
-            if (panicSession) {
-                startButton.hidden = true;
-                stopButton.hidden = false;
-                status.classList.add('panic-active');
-                const expiresAt = new Date(panicSession.expires_at);
-                status.textContent = message || t('panicActive', {
-                    time: Number.isNaN(expiresAt.getTime())
-                        ? panicSession.expires_at
-                        : expiresAt.toLocaleString(t('dateLocale'))
-                });
-                return;
-            }
-
-            startButton.hidden = false;
-            startButton.disabled = !panicConfigured || panicContactCount === 0;
-            stopButton.hidden = true;
-            status.classList.remove('panic-active');
-            status.textContent = message || (
-                !panicConfigured
-                    ? t('panicUnavailable')
-                    : panicContactCount === 0
-                        ? t('panicAddCaregiver')
-                        : ''
-            );
-        }
-
-        async function refreshPanicStatus() {
-            try {
-                const result = await api('/api/panic/status');
-                panicConfigured = result.configured;
-                panicContactCount = result.contact_count;
-                panicSession = result.active_session
-                    ? {
-                        ...result.active_session,
-                        next_update_at: new Date(
-                            new Date(result.active_session.last_update_at).getTime()
-                            + PANIC_LOCATION_INTERVAL_MS
-                        ).toISOString()
-                    }
-                    : null;
-                renderPanicState();
-                if (panicSession) schedulePanicLocationUpdate();
-            } catch (error) {
-                console.error('Could not load emergency alert status:', error);
-                renderPanicState(t('panicUnavailable'));
-            }
-        }
-
-        function openPanicConfirmation() {
-            if (!panicConfigured || panicContactCount === 0) {
-                renderPanicState();
-                return;
-            }
-            document.getElementById('panic-recipient-consent').checked = false;
-            document.getElementById('panic-user-location-consent').checked = false;
-            document.getElementById('panic-duration').value = '60';
-            renderPanicRecipients();
-            document.getElementById('panic-confirmation').showModal();
-        }
-
-        function closePanicConfirmation() {
-            document.getElementById('panic-confirmation').close();
-        }
-
-        function getCurrentPanicLocation() {
-            if (!window.isSecureContext) {
-                return Promise.reject(new Error(t('panicSecureContext')));
-            }
-            if (!navigator.geolocation) {
-                return Promise.reject(new Error(t('panicNoGeolocation')));
-            }
-            return new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => resolve({
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude
-                    }),
-                    (error) => reject(new Error(
-                        error.code === error.PERMISSION_DENIED
-                            ? t('panicLocationDenied')
-                            : error.code === error.POSITION_UNAVAILABLE
-                                ? t('panicLocationUnavailable')
-                                : t('panicLocationTimeout')
-                    )),
-                    { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
-                );
-            });
-        }
-
-        async function startPanicSharing(durationMinutes) {
-            const startButton = document.getElementById('panic-start-button');
-            startButton.disabled = true;
-            document.getElementById('panic-status').textContent = t('panicLocating');
-            try {
-                const location = await getCurrentPanicLocation();
-                const result = await api('/api/panic/start', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        duration_minutes: durationMinutes,
-                        user_location_consent_confirmed: true,
-                        location_consent_confirmed: true,
-                        ...location
-                    })
-                });
-                panicSession = {
-                    ...result.active_session,
-                    next_update_at: new Date(
-                        new Date(result.active_session.last_update_at).getTime()
-                        + PANIC_LOCATION_INTERVAL_MS
-                    ).toISOString()
-                };
-                const delivery = result.delivery;
-                renderPanicState(
-                    delivery.failed > 0
-                        ? t('panicPartiallySent', { count: delivery.accepted_by_provider })
-                        : t('panicStarted', { count: delivery.accepted_by_provider })
-                );
-                schedulePanicLocationUpdate();
-            } catch (error) {
-                console.error('Could not start emergency location sharing:', error);
-                renderPanicState(t('panicFailed', { error: error.message }));
-            } finally {
-                startButton.disabled = !panicConfigured || panicContactCount === 0;
-            }
-        }
-
-        function schedulePanicLocationUpdate() {
-            if (panicUpdateTimer !== null) window.clearTimeout(panicUpdateTimer);
-            if (!panicSession) return;
-            const now = Date.now();
-            const expiresAt = new Date(panicSession.expires_at).getTime();
-            const nextUpdateAt = new Date(panicSession.next_update_at).getTime();
-            const delay = Math.max(
-                1000,
-                Math.min(nextUpdateAt - now, expiresAt - now)
-            );
-            panicUpdateTimer = window.setTimeout(sendPanicLocationUpdate, delay);
-        }
-
-        async function sendPanicLocationUpdate() {
-            if (!panicSession) return;
-            if (Date.now() >= new Date(panicSession.expires_at).getTime()) {
-                panicSession = null;
-                panicUpdateTimer = null;
-                renderPanicState(t('panicStopped'));
-                return;
-            }
-
-            try {
-                const location = await getCurrentPanicLocation();
-                const result = await api(
-                    `/api/panic/${panicSession.id}/location`,
-                    { method: 'POST', body: JSON.stringify(location) }
-                );
-                panicSession.next_update_at = result.next_update_at;
-                document.getElementById('panic-status').textContent =
-                    result.delivery.failed > 0
-                        ? t('panicPartiallySent', {
-                            count: result.delivery.accepted_by_provider
-                        })
-                        : t('panicUpdateSent');
-            } catch (error) {
-                console.error('Could not send emergency location update:', error);
-                if (error.message.includes('expired') || error.message.includes('No active')) {
-                    panicSession = null;
-                    panicUpdateTimer = null;
-                    renderPanicState(t('panicStopped'));
-                    return;
-                }
-                document.getElementById('panic-status').textContent =
-                    t('panicUpdateFailed', { error: error.message });
-                panicSession.next_update_at = new Date(
-                    Date.now() + PANIC_LOCATION_INTERVAL_MS
-                ).toISOString();
-            }
-            schedulePanicLocationUpdate();
-        }
-
-        async function stopPanicSharing() {
-            if (!panicSession) return;
-            const activeSession = panicSession;
-            if (panicUpdateTimer !== null) window.clearTimeout(panicUpdateTimer);
-            panicUpdateTimer = null;
-            panicSession = null;
-            renderPanicState(t('panicStopped'));
-            try {
-                await api(`/api/panic/${activeSession.id}/stop`, {
-                    method: 'POST',
-                    body: '{}'
-                });
-            } catch (error) {
-                console.error('Could not stop emergency location sharing:', error);
-                await refreshPanicStatus();
-                document.getElementById('panic-status').textContent =
-                    t('panicStopFailed', { error: error.message });
-            }
-        }
-
         async function refreshCaregivers() {
             const actionStatus = document.getElementById('caregiver-action-status');
             try {
@@ -1725,7 +1347,6 @@
                 const result = await api('/api/caregivers');
                 caregiverContacts = result.caregivers;
                 renderCaregivers(caregiverContacts);
-                await refreshPanicStatus();
             } catch (error) {
                 console.error('Could not load caregiver alert settings:', error);
                 actionStatus.textContent = t('caregiverLoadFailed', { error: error.message });
@@ -1749,7 +1370,6 @@
                 caregiverContacts.push(result.caregiver);
                 renderCaregivers(caregiverContacts);
                 status.textContent = t('caregiverSaved');
-                await refreshPanicStatus();
             } catch (error) {
                 console.error('Could not add caregiver contact:', error);
                 status.textContent = t('caregiverSaveFailed', { error: error.message });
@@ -1767,7 +1387,6 @@
                 );
                 renderCaregivers(caregiverContacts);
                 status.textContent = t('caregiverRemoved');
-                await refreshPanicStatus();
             } catch (error) {
                 console.error('Could not remove caregiver contact:', error);
                 status.textContent = t('caregiverRemoveFailed', { error: error.message });
@@ -2000,12 +1619,6 @@
             if (!signedIn) {
                 currentUserName = '';
                 clearReminderTimers();
-                if (panicUpdateTimer !== null) window.clearTimeout(panicUpdateTimer);
-                panicUpdateTimer = null;
-                panicSession = null;
-                panicConfigured = false;
-                panicContactCount = 0;
-                renderPanicState();
                 caregiverContacts = [];
                 return;
             }
