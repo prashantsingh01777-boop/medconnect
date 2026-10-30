@@ -386,7 +386,7 @@ class ProductionReadinessTests(unittest.TestCase):
         self.assertEqual(response.mimetype, 'application/pdf')
         self.assertTrue(response.data.startswith(b'%PDF-'))
         self.assertIn(
-            'filename=medconnect-medicine-report-',
+            'filename=curasync-medicine-report-',
             response.headers['Content-Disposition'],
         )
 
@@ -469,7 +469,7 @@ class ProductionReadinessTests(unittest.TestCase):
         send_sms.assert_called_once_with('+919876543210', 'Please call me.')
         send_email.assert_called_once_with(
             'friend@example.com',
-            'A message from MedConnect',
+            'A message from Curasync',
             'Please call me.',
         )
 
@@ -553,7 +553,7 @@ class ProductionReadinessTests(unittest.TestCase):
             ) as smtp_factory:
                 medconnect.send_gmail_message(
                     'friend@example.com',
-                    'A message from MedConnect',
+                    'A message from Curasync',
                     'Please call me.',
                 )
 
@@ -562,7 +562,7 @@ class ProductionReadinessTests(unittest.TestCase):
         email = smtp.send_message.call_args.args[0]
         self.assertEqual(email['From'], 'sender@gmail.com')
         self.assertEqual(email['To'], 'friend@example.com')
-        self.assertEqual(email['Subject'], 'A message from MedConnect')
+        self.assertEqual(email['Subject'], 'A message from Curasync')
         self.assertEqual(email.get_content().strip(), 'Please call me.')
 
     def test_emergency_location_alert_routes_and_legacy_data_are_removed(self):

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MedConnect - Medicine Tracker</title>
+    <title>Curasync - Medicine Tracker</title>
     <style>
         :root {
             --bg: #090d16;
@@ -428,7 +428,7 @@
 <body>
 
     <div class="navbar">
-        <div class="brand">🏥 MedConnect <span data-i18n="brandSubtitle">Health Companion</span></div>
+        <div class="brand">🏥 Curasync <span data-i18n="brandSubtitle">Health Companion</span></div>
         <div class="language-switch">
             <label class="sr-only" for="assistant-language" data-i18n="interfaceLanguage">Interface language</label>
             <select id="assistant-language" aria-label="Interface language">
@@ -455,7 +455,7 @@
     <section class="auth-container" id="auth-container">
         <div class="card">
             <h1 class="card-title" id="auth-title">Apna account banayein</h1>
-            <p data-i18n="authIntro">MedConnect mein sign up karke apna medicine schedule aur history surakshit rakhein.</p>
+            <p data-i18n="authIntro">Curasync mein sign up karke apna medicine schedule aur history surakshit rakhein.</p>
             <form id="signup-form">
                 <label for="signup-name" data-i18n="name">Aapka naam</label>
                 <input id="signup-name" name="name" autocomplete="name" maxlength="100" required>
@@ -500,7 +500,7 @@
     </section>
 
     <section class="dashboard" id="dashboard" hidden>
-        <nav class="dashboard-nav" aria-label="MedConnect sections" data-i18n-aria-label="dashboardSections">
+        <nav class="dashboard-nav" aria-label="Curasync sections" data-i18n-aria-label="dashboardSections">
             <button type="button" aria-current="page" aria-controls="alarms-panel" onclick="showDashboardSection('alarms')" data-i18n="alarmsTab">⏰ Dawa ke alarms</button>
             <button type="button" aria-current="false" aria-controls="adherence-panel" onclick="showDashboardSection('adherence')" data-i18n="adherenceTab">📊 Medicine Report</button>
             <button type="button" aria-current="false" aria-controls="assistant-panel" onclick="showDashboardSection('assistant')" data-i18n="assistantTab">🤖 Dr. Edith</button>
@@ -552,7 +552,7 @@
                         <p class="caregiver-status empty-state" id="caregiver-action-status" role="status" aria-live="polite"></p>
                         <div class="caregiver-list" id="caregiver-list" aria-live="polite"></div>
                         <h3 class="card-title" data-i18n="customMessageTitle">✉️ Send a message</h3>
-                        <p class="empty-state" data-i18n="customMessageInfo">Send a message by Twilio SMS or configured Gmail. Only message people who agreed; carrier or provider charges may apply. Messages are not stored by MedConnect.</p>
+                        <p class="empty-state" data-i18n="customMessageInfo">Send a message by Twilio SMS or configured Gmail. Only message people who agreed; carrier or provider charges may apply. Messages are not stored by Curasync.</p>
                         <form class="caregiver-form" id="custom-message-form">
                             <div>
                                 <label for="message-channel" data-i18n="messageChannel">Delivery method</label>
@@ -668,7 +668,7 @@
             </section>
 
             <div class="footer-text">
-                <span data-i18n="footerNotice">MedConnect sirf tracking aur general health information ke liye hai; dawa doctor ke nirdesh ke mutabik lein.</span>
+                <span data-i18n="footerNotice">Curasync sirf tracking aur general health information ke liye hai; dawa doctor ke nirdesh ke mutabik lein.</span>
                 <div class="developer-tag" data-i18n="developer">🚀 निर्माता: प्रशांत सिंह</div>
                 <div class="developer-tag" data-i18n="coFounder">🤝 सह-संस्थापक: यश भारद्वाज</div>
                 <div class="legal-links">
@@ -718,7 +718,7 @@
                 resetConfirmTitle: 'Verify OTP and change password',
                 authSwitchSignup: 'Already have an account? Log in',
                 authSwitchLogin: 'New here? Sign up',
-                dashboardSections: 'MedConnect sections',
+                dashboardSections: 'Curasync sections',
                 alarmsTab: '⏰ Medicine alarms',
                 adherenceTab: '📊 Medicine Report',
                 assistantTab: '🤖 Dr. Edith',
@@ -765,7 +765,7 @@
                 caregiverLoadFailed: 'Could not load caregiver contacts: {error}',
                 caregiverRow: '{name} • {phone}',
                 customMessageTitle: '✉️ Send a message',
-                customMessageInfo: 'Send a message by Twilio SMS or configured Gmail. Only message people who agreed; carrier or provider charges may apply. Messages are not stored by MedConnect.',
+                customMessageInfo: 'Send a message by Twilio SMS or configured Gmail. Only message people who agreed; carrier or provider charges may apply. Messages are not stored by Curasync.',
                 messageChannel: 'Delivery method',
                 messageSms: 'SMS via Twilio',
                 messageEmail: 'Email via Gmail',
@@ -821,7 +821,7 @@
                 healthTips: 'View health tips',
                 healthInformation: 'General health information:',
                 questionPrompt: 'Type your question and select View health tips. Your answer will appear here.',
-                footerNotice: 'MedConnect is for tracking and general health information only. Take medicines as directed by your doctor.',
+                footerNotice: 'Curasync is for tracking and general health information only. Take medicines as directed by your doctor.',
                 developer: '🚀 Developed by Prashant Singh',
                 coFounder: '🤝 Co-founder: Yash Bhardwaj',
                 welcomeUser: 'Hello, {name}',
@@ -855,9 +855,9 @@
                 removeFailed: '❌ Could not remove medicine: {error}',
                 logoutFailed: '❌ Could not log out: {error}',
                 missedCheckFailed: '❌ Could not check missed dose: {error}',
-                missedNotificationTitle: 'MedConnect: missed dose reminder',
-                reminderNotificationTitle: 'MedConnect medicine reminder',
-                followUpNotificationTitle: 'MedConnect: dose reminder',
+                missedNotificationTitle: 'Curasync: missed dose reminder',
+                reminderNotificationTitle: 'Curasync medicine reminder',
+                followUpNotificationTitle: 'Curasync: dose reminder',
                 missedNotification: '"{name}" is not marked as taken yet. If you have taken it, mark it as taken in the app.',
                 reminderNotification: 'It is time to take {name}.',
                 followUpNotification: '"{name}" is still not marked as taken. Please check and update your dose.',
@@ -934,7 +934,7 @@
                 resetConfirmTitle: 'OTP सत्यापित करके पासवर्ड बदलें',
                 authSwitchSignup: 'पहले से खाता है? लॉग इन करें',
                 authSwitchLogin: 'नए हैं? साइन अप करें',
-                dashboardSections: 'MedConnect अनुभाग',
+                dashboardSections: 'Curasync अनुभाग',
                 alarmsTab: '⏰ दवाओं के अलार्म',
                 adherenceTab: '📊 दवा रिपोर्ट',
                 assistantTab: '🤖 Dr. Edith',
@@ -981,7 +981,7 @@
                 caregiverLoadFailed: 'Caregiver के नंबर लोड नहीं हुए: {error}',
                 caregiverRow: '{name} • {phone}',
                 customMessageTitle: '✉️ संदेश भेजें',
-                customMessageInfo: 'Twilio SMS या configured Gmail से संदेश भेजें। केवल सहमति देने वाले व्यक्ति को संदेश भेजें; carrier/provider शुल्क लग सकता है। MedConnect संदेश सहेजता नहीं है।',
+                customMessageInfo: 'Twilio SMS या configured Gmail से संदेश भेजें। केवल सहमति देने वाले व्यक्ति को संदेश भेजें; carrier/provider शुल्क लग सकता है। Curasync संदेश सहेजता नहीं है।',
                 messageChannel: 'भेजने का माध्यम',
                 messageSms: 'Twilio से SMS',
                 messageEmail: 'Gmail से ईमेल',
@@ -1037,7 +1037,7 @@
                 healthTips: 'स्वास्थ्य सुझाव देखें',
                 healthInformation: 'सामान्य स्वास्थ्य जानकारी:',
                 questionPrompt: 'अपना सवाल लिखें और स्वास्थ्य सुझाव देखें पर क्लिक करें। जवाब यहाँ दिखेगा।',
-                footerNotice: 'MedConnect केवल रिकॉर्ड और सामान्य स्वास्थ्य जानकारी के लिए है। दवा डॉक्टर के निर्देशानुसार लें।',
+                footerNotice: 'Curasync केवल रिकॉर्ड और सामान्य स्वास्थ्य जानकारी के लिए है। दवा डॉक्टर के निर्देशानुसार लें।',
                 developer: '🚀 निर्माता: प्रशांत सिंह',
                 coFounder: '🤝 सह-संस्थापक: यश भारद्वाज',
                 welcomeUser: 'नमस्ते, {name}',
@@ -1071,9 +1071,9 @@
                 removeFailed: '❌ दवा हटाई नहीं जा सकी: {error}',
                 logoutFailed: '❌ लॉग आउट नहीं हो सका: {error}',
                 missedCheckFailed: '❌ छूटी खुराक जाँची नहीं जा सकी: {error}',
-                missedNotificationTitle: 'MedConnect: छूटी खुराक का रिमाइंडर',
-                reminderNotificationTitle: 'MedConnect दवा रिमाइंडर',
-                followUpNotificationTitle: 'MedConnect: खुराक रिमाइंडर',
+                missedNotificationTitle: 'Curasync: छूटी खुराक का रिमाइंडर',
+                reminderNotificationTitle: 'Curasync दवा रिमाइंडर',
+                followUpNotificationTitle: 'Curasync: खुराक रिमाइंडर',
                 missedNotification: '"{name}" को अभी तक ली हुई नहीं बताया गया। यदि ले चुके हैं, तो ऐप में "ले ली" बताएँ।',
                 reminderNotification: '"{name}" लेने का समय हो गया है।',
                 followUpNotification: '"{name}" को अभी तक लिया हुआ नहीं बताया गया है। कृपया जाँचकर खुराक का रिकॉर्ड अपडेट करें।',
@@ -1293,8 +1293,8 @@
             const language = languageSelect.value === 'en' ? 'en' : 'hi';
             document.documentElement.lang = language;
             document.title = language === 'en'
-                ? 'MedConnect - Medicine Tracker'
-                : 'MedConnect - दवा ट्रैकर';
+                ? 'Curasync - Medicine Tracker'
+                : 'Curasync - दवा ट्रैकर';
 
             document.querySelectorAll('[data-i18n]').forEach((element) => {
                 element.textContent = t(element.dataset.i18n);

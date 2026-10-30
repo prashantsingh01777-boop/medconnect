@@ -1,6 +1,6 @@
-# MedConnect
+# Curasync
 
-MedConnect is a self-hosted medicine-schedule tracker with a limited, rule-based health-information assistant. It is not a medical provider, emergency dispatch service, or guaranteed reminder service.
+Curasync is a self-hosted medicine-schedule tracker with a limited, rule-based health-information assistant. It is not a medical provider, emergency dispatch service, or guaranteed reminder service.
 
 ## Public deployment (Docker Compose)
 
@@ -26,9 +26,9 @@ $environmentFile = Join-Path $env:LOCALAPPDATA 'MedConnect\docker-tunnel.env'
 docker compose --project-name medconnect-tunnel --env-file $environmentFile -f .\compose.tunnel.yaml up -d --force-recreate app
 ```
 
-Users can manually send a message to a consenting recipient by SMS or email from the medicine alarms page. SMS requires `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and a Twilio SMS-capable `TWILIO_SMS_FROM` sender; email uses the configured Gmail sender and App Password above. Messages are not stored by MedConnect, but the delivery providers may process them, and charges may apply. Keep all provider credentials in the private environment file.
+Users can manually send a message to a consenting recipient by SMS or email from the medicine alarms page. SMS requires `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and a Twilio SMS-capable `TWILIO_SMS_FROM` sender; email uses the configured Gmail sender and App Password above. Messages are not stored by Curasync, but the delivery providers may process them, and charges may apply. Keep all provider credentials in the private environment file.
 
-Automatic caregiver alerts require a Twilio account and incur messaging charges. Add `TWILIO_WHATSAPP_FROM` and `TWILIO_WHATSAPP_CONTENT_SID` as well as the Twilio SMS settings before enabling automatic SMS/WhatsApp caregiver alerts. Use an approved WhatsApp sender. Submit and approve a WhatsApp template with these three variables: `{{1}}` the account holder's name, `{{2}}` the scheduled time, and `{{3}}` the 15-minute delay. A template body can be: `MedConnect: {{1}}'s medicine dose scheduled for {{2}} was not marked as taken {{3}} minutes after the alarm. Please check with them. Not emergency monitoring.` Configure the WhatsApp sender as `whatsapp:+<number>` and set the approved template's Content SID.
+Automatic caregiver alerts require a Twilio account and incur messaging charges. Add `TWILIO_WHATSAPP_FROM` and `TWILIO_WHATSAPP_CONTENT_SID` as well as the Twilio SMS settings before enabling automatic SMS/WhatsApp caregiver alerts. Use an approved WhatsApp sender. Submit and approve a WhatsApp template with these three variables: `{{1}}` the account holder's name, `{{2}}` the scheduled time, and `{{3}}` the 15-minute delay. A template body can be: `Curasync: {{1}}'s medicine dose scheduled for {{2}} was not marked as taken {{3}} minutes after the alarm. Please check with them. Not emergency monitoring.` Configure the WhatsApp sender as `whatsapp:+<number>` and set the approved template's Content SID.
 
 The `start_medconnect_docker.ps1` supervisor runs the app container and restarts the Quick Tunnel after failures. The Windows Task Scheduler entry named **MedConnect Public Tunnel** is configured to run that script at sign-in and continue on battery.
 

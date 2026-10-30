@@ -459,8 +459,8 @@ def otp_digest(otp):
 def send_password_reset_email(email, otp):
     send_gmail_message(
         email,
-        'MedConnect password reset OTP',
-        f'MedConnect password reset OTP: {otp}\n\n'
+        'Curasync password reset OTP',
+        f'Curasync password reset OTP: {otp}\n\n'
         'Yeh code 10 minute mein expire ho jayega. Is code ko kisi ke saath share na karein.',
     )
 
@@ -1063,7 +1063,7 @@ def medication_adherence_pdf():
     pdf_buffer = io.BytesIO()
     page_width, page_height = A4
     document = canvas.Canvas(pdf_buffer, pagesize=A4)
-    document.setTitle('MedConnect medicine report')
+    document.setTitle('Curasync medicine report')
     document.setFillColor(colors.HexColor('#0f172a'))
     document.rect(0, page_height - 112, page_width, 112, stroke=0, fill=1)
     document.setFillColor(colors.white)
@@ -1141,7 +1141,7 @@ def medication_adherence_pdf():
         mimetype='application/pdf',
         as_attachment=True,
         download_name=(
-            f"medconnect-medicine-report-{report['start_date']}-{report['end_date']}.pdf"
+            f"curasync-medicine-report-{report['start_date']}-{report['end_date']}.pdf"
         ),
         max_age=0,
     )
@@ -1201,7 +1201,7 @@ def send_twilio_caregiver_alert(phone_e164, channel, user_name, schedule_time):
     ].strip()
     recipient = phone_e164 if channel == 'sms' else f'whatsapp:{phone_e164}'
     message = (
-        f'MedConnect: {user_name} ki dawa ki {schedule_time} baje wali dose ko '
+        f'Curasync: {user_name} ki dawa ki {schedule_time} baje wali dose ko '
         f'{CAREGIVER_ALERT_DELAY_MINUTES} minute baad bhi app mein li hui mark nahi kiya gaya. '
         'Kripya unse sampark karke pushti karein. Yeh emergency monitoring nahi hai.'
     )
@@ -1656,7 +1656,7 @@ def send_custom_message():
         if channel == 'sms':
             send_custom_twilio_sms(recipient, body)
         else:
-            send_gmail_message(recipient, 'A message from MedConnect', body)
+            send_gmail_message(recipient, 'A message from Curasync', body)
     except urllib.error.HTTPError as error:
         logger.error(
             'Custom message delivery failed (channel=%s, HTTP status=%s)',
@@ -1749,7 +1749,7 @@ def ask_ai():
             'कमी, बहुत तेज़ या लगातार बुखार, या हालत बिगड़ने पर तुरंत चिकित्सा सहायता लें।'
         )
         answer = '\n\n'.join(answers) + safety_note
-    heading = '🏥 MedConnect Health Information\n\n' if language == 'en' else '🏥 MedConnect स्वास्थ्य जानकारी\n\n'
+    heading = '🏥 Curasync Health Information\n\n' if language == 'en' else '🏥 Curasync स्वास्थ्य जानकारी\n\n'
     return jsonify({'answer': heading + answer})
 
 
