@@ -501,8 +501,7 @@
     <section class="dashboard" id="dashboard" hidden>
         <nav class="dashboard-nav" aria-label="MedConnect sections" data-i18n-aria-label="dashboardSections">
             <button type="button" aria-current="page" aria-controls="alarms-panel" onclick="showDashboardSection('alarms')" data-i18n="alarmsTab">⏰ Dawa ke alarms</button>
-            <button type="button" aria-current="false" aria-controls="history-panel" onclick="showDashboardSection('history')" data-i18n="historyTab">📋 Dawa ki history</button>
-            <button type="button" aria-current="false" aria-controls="adherence-panel" onclick="showDashboardSection('adherence')" data-i18n="adherenceTab">📊 Adherence report</button>
+            <button type="button" aria-current="false" aria-controls="adherence-panel" onclick="showDashboardSection('adherence')" data-i18n="adherenceTab">📊 Medicine Report</button>
             <button type="button" aria-current="false" aria-controls="assistant-panel" onclick="showDashboardSection('assistant')" data-i18n="assistantTab">🤖 Dr. Edith</button>
             <button type="button" aria-current="false" aria-controls="account-panel" onclick="showDashboardSection('account')" data-i18n="accountTab">🔒 Account and privacy</button>
         </nav>
@@ -563,18 +562,10 @@
                 </div>
             </section>
 
-            <section class="dashboard-panel" id="history-panel" aria-label="Dawa ki history" data-i18n-aria-label="historyTab" hidden>
+            <section class="dashboard-panel" id="adherence-panel" aria-label="Medicine Report" data-i18n-aria-label="adherenceTab" hidden>
                 <div class="card">
-                    <h2 class="card-title" data-i18n="lastSevenDays">📋 Pichhle 7 din ki history</h2>
-                    <p class="empty-state" data-i18n="historyIntro">Yahan pichhle 7 din ki dose history dikhegi. 7 din se purane records apne-aap hat jaayenge.</p>
-                    <div class="history-list" id="history-list" aria-live="polite"></div>
-                </div>
-            </section>
-
-            <section class="dashboard-panel" id="adherence-panel" aria-label="Medication adherence report" data-i18n-aria-label="adherenceTab" hidden>
-                <div class="card">
-                    <h2 class="card-title" data-i18n="adherenceTitle">📊 Weekly medication adherence</h2>
-                    <p class="empty-state" data-i18n="adherenceIntro">Your last 7 days, based on currently active medicine schedules. A dose is on time when marked taken from its scheduled time through 30 minutes afterward. Future doses today are excluded.</p>
+                    <h2 class="card-title" data-i18n="adherenceTitle">📊 Medicine Report</h2>
+                    <p class="empty-state" data-i18n="adherenceIntro">Weekly medicine schedule summary and your dose history for the last 7 days. A dose is on time when marked taken within 30 minutes after its scheduled time.</p>
                     <div class="adherence-overview" id="adherence-overview" hidden>
                         <div class="adherence-donut" id="adherence-donut" role="img" aria-label="Weekly adherence">
                             <div class="adherence-donut-center">
@@ -595,6 +586,9 @@
                     </div>
                     <div class="adherence-chart" id="adherence-chart" aria-live="polite"></div>
                     <p class="empty-state adherence-note" id="adherence-empty" data-i18n="adherenceEmpty" hidden>No scheduled doses are available for this period yet.</p>
+                    <h3 class="card-title" data-i18n="lastSevenDays">📋 Dose history for the last 7 days</h3>
+                    <p class="empty-state" data-i18n="historyIntro">Older records are automatically removed.</p>
+                    <div class="history-list" id="history-list" aria-live="polite"></div>
                     <div class="adherence-actions">
                         <button id="share-adherence-button" type="button" onclick="shareAdherenceReport()" data-i18n="shareAdherence">📄 Create and share PDF</button>
                     </div>
@@ -700,8 +694,7 @@
                 authSwitchLogin: 'New here? Sign up',
                 dashboardSections: 'MedConnect sections',
                 alarmsTab: '⏰ Medicine alarms',
-                historyTab: '📋 Medicine history',
-                adherenceTab: '📊 Adherence report',
+                adherenceTab: '📊 Medicine Report',
                 assistantTab: '🤖 Dr. Edith',
                 drSmart: '🤖 Dr. Edith',
                 closeDrSmart: 'Close Dr. Edith',
@@ -752,15 +745,15 @@
                 reminderIntro: 'If a dose is still not marked as taken 7 minutes after its alarm, you will get a reminder with a different sound. A missed-dose reminder follows after 15 minutes. Keep this page open for alarms.',
                 eachMedicineAlarm: 'A separate alarm for each medicine',
                 manyMedicines: 'You can add alarms for many medicines; there is no small fixed limit.',
-                lastSevenDays: '📋 History for the last 7 days',
-                historyIntro: 'Your dose history for the last 7 days appears here. Older records are automatically removed.',
-                adherenceTitle: '📊 Weekly medication adherence',
-                adherenceIntro: 'Your last 7 days, based on currently active medicine schedules. A dose is on time when marked taken from its scheduled time through 30 minutes afterward. Future doses today are excluded.',
+                lastSevenDays: '📋 Dose history for the last 7 days',
+                historyIntro: 'Taken and missed doses are listed here. Older records are automatically removed.',
+                adherenceTitle: '📊 Medicine Report',
+                adherenceIntro: 'Weekly medicine schedule summary and your dose history for the last 7 days. A dose is on time when marked taken within 30 minutes after its scheduled time.',
                 adherenceOnTime: 'on time',
                 adherenceDoses: 'doses on time',
                 adherenceDays: 'days with on-time doses',
                 adherenceEmpty: 'No scheduled doses are available for this period yet.',
-                adherenceLoadFailed: 'Could not load the adherence report: {error}',
+                adherenceLoadFailed: 'Could not load the medicine report: {error}',
                 shareAdherence: '📄 Create and share PDF',
                 shareAdherenceWorking: 'Creating the report PDF...',
                 shareAdherenceDownloaded: 'The PDF was downloaded. Attach it in WhatsApp or an email to your doctor.',
@@ -893,8 +886,7 @@
                 authSwitchLogin: 'नए हैं? साइन अप करें',
                 dashboardSections: 'MedConnect अनुभाग',
                 alarmsTab: '⏰ दवाओं के अलार्म',
-                historyTab: '📋 दवाओं का इतिहास',
-                adherenceTab: '📊 दवा लेने की रिपोर्ट',
+                adherenceTab: '📊 दवा रिपोर्ट',
                 assistantTab: '🤖 Dr. Edith',
                 drSmart: '🤖 Dr. Edith',
                 closeDrSmart: 'Dr. Edith बंद करें',
@@ -945,15 +937,15 @@
                 reminderIntro: 'दवा के अलार्म के 7 मिनट बाद भी खुराक को लिया हुआ न बताएँ, तो अलग आवाज़ में रिमाइंडर मिलेगा। 15 मिनट बाद छूटी खुराक का रिमाइंडर आएगा। अलार्म के लिए यह पेज खुला रखें।',
                 eachMedicineAlarm: 'हर दवा के लिए अलग अलार्म',
                 manyMedicines: 'कई दवाओं के अलार्म जोड़ सकते हैं; कोई छोटी तय सीमा नहीं है।',
-                lastSevenDays: '📋 पिछले 7 दिनों का इतिहास',
-                historyIntro: 'पिछले 7 दिनों की खुराक का इतिहास यहाँ दिखेगा। पुराने रिकॉर्ड अपने-आप हट जाएँगे।',
-                adherenceTitle: '📊 इस हफ्ते दवा लेने की रिपोर्ट',
-                adherenceIntro: 'यह रिपोर्ट पिछले 7 दिनों और अभी सक्रिय दवा schedules पर आधारित है। तय समय से लेकर अगले 30 मिनट के भीतर “ली” mark की गई dose समय पर मानी जाएगी। आज की आने वाली doses इसमें नहीं गिनी जातीं।',
+                lastSevenDays: '📋 पिछले 7 दिनों की खुराक का इतिहास',
+                historyIntro: 'यहाँ ली गई और छूटी हुई खुराकें दिखेंगी। पुराने रिकॉर्ड अपने-आप हट जाएँगे।',
+                adherenceTitle: '📊 दवा रिपोर्ट',
+                adherenceIntro: 'इस रिपोर्ट में पिछले 7 दिनों का दवा schedule summary और खुराक का इतिहास है। तय समय के 30 मिनट के भीतर ली हुई mark की गई खुराक समय पर मानी जाती है।',
                 adherenceOnTime: 'समय पर',
                 adherenceDoses: 'खुराक समय पर',
                 adherenceDays: 'दिनों में समय पर खुराक',
                 adherenceEmpty: 'इस अवधि के लिए अभी कोई तय खुराक उपलब्ध नहीं है।',
-                adherenceLoadFailed: 'दवा लेने की रिपोर्ट लोड नहीं हुई: {error}',
+                adherenceLoadFailed: 'दवा रिपोर्ट लोड नहीं हुई: {error}',
                 shareAdherence: '📄 PDF बनाएँ और साझा करें',
                 shareAdherenceWorking: 'रिपोर्ट की PDF बनाई जा रही है...',
                 shareAdherenceDownloaded: 'PDF डाउनलोड हो गई। इसे WhatsApp या डॉक्टर को भेजे ईमेल में attach करें।',
@@ -1339,7 +1331,6 @@
         function showDashboardSection(section) {
             const sections = {
                 alarms: 'alarms-panel',
-                history: 'history-panel',
                 adherence: 'adherence-panel',
                 assistant: 'assistant-panel',
                 account: 'account-panel'
@@ -1382,7 +1373,6 @@
             document.querySelector('.main-container').classList.add('guest-mode');
             document.querySelector('.dashboard .main-container').classList.add('assistant-view');
             document.getElementById('alarms-panel').hidden = true;
-            document.getElementById('history-panel').hidden = true;
             document.getElementById('adherence-panel').hidden = true;
             document.getElementById('account-panel').hidden = true;
             document.getElementById('assistant-panel').hidden = false;
@@ -1595,7 +1585,7 @@
                     const adherenceData = await api('/api/adherence');
                     renderAdherence(adherenceData.report);
                 } catch (error) {
-                    console.error('Could not load adherence report:', error);
+                    console.error('Could not load medicine report:', error);
                     document.getElementById('adherence-status').textContent =
                         t('adherenceLoadFailed', { error: error.message });
                 }
@@ -1763,7 +1753,7 @@
 
                 const reportPdf = new File(
                     [await response.blob()],
-                    'medconnect-adherence-report.pdf',
+                    'medconnect-medicine-report.pdf',
                     { type: 'application/pdf' }
                 );
                 if (

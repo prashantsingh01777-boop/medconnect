@@ -385,7 +385,10 @@ class ProductionReadinessTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, 'application/pdf')
         self.assertTrue(response.data.startswith(b'%PDF-'))
-        self.assertIn('attachment;', response.headers['Content-Disposition'])
+        self.assertIn(
+            'filename=medconnect-medicine-report-',
+            response.headers['Content-Disposition'],
+        )
 
     def test_emergency_location_alert_routes_and_legacy_data_are_removed(self):
         self.assertEqual(self.signup().status_code, 201)

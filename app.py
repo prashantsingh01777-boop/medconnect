@@ -1051,12 +1051,12 @@ def medication_adherence_pdf():
     pdf_buffer = io.BytesIO()
     page_width, page_height = A4
     document = canvas.Canvas(pdf_buffer, pagesize=A4)
-    document.setTitle('MedConnect medication adherence report')
+    document.setTitle('MedConnect medicine report')
     document.setFillColor(colors.HexColor('#0f172a'))
     document.rect(0, page_height - 112, page_width, 112, stroke=0, fill=1)
     document.setFillColor(colors.white)
     document.setFont('Helvetica-Bold', 20)
-    document.drawString(42, page_height - 55, 'Medication Adherence')
+    document.drawString(42, page_height - 55, 'Medicine Report')
     document.setFont('Helvetica', 10)
     document.drawString(
         42, page_height - 78,
@@ -1089,7 +1089,7 @@ def medication_adherence_pdf():
     row_height = 35
     document.setFont('Helvetica-Bold', 11)
     document.setFillColor(colors.HexColor('#0f172a'))
-    document.drawString(chart_left, chart_top, 'Daily adherence')
+    document.drawString(chart_left, chart_top, 'Daily medicine doses on time')
     chart_top -= 30
     for day in report['daily']:
         label = day['date']
@@ -1129,7 +1129,7 @@ def medication_adherence_pdf():
         mimetype='application/pdf',
         as_attachment=True,
         download_name=(
-            f"medconnect-adherence-{report['start_date']}-{report['end_date']}.pdf"
+            f"medconnect-medicine-report-{report['start_date']}-{report['end_date']}.pdf"
         ),
         max_age=0,
     )
